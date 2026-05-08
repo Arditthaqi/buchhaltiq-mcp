@@ -14,9 +14,10 @@ and the calculation in ``receipt_analysis.py:227-263``.
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp._money import parse_decimal, parse_tax_rate, round_money, split_gross
 from buchhaltiq_mcp.config import Mode
 from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 
@@ -26,40 +27,8 @@ if TYPE_CHECKING:
     from buchhaltiq_mcp.config import Config
 
 
-_TWO_PLACES = Decimal("0.01")
 _GESCHAEFTSESSEN_DEDUCTIBLE = Decimal("70")  # § 4 Abs. 5 Nr. 2 EStG
 _MITARBEITER_DEDUCTIBLE = Decimal("100")
-_SUPPORTED_RATES = (Decimal("0"), Decimal("7"), Decimal("19"))
-
-
-def _parse_decimal(raw: str, *, field: str) -> Decimal:
-    try:
-        return Decimal(raw)
-    except (InvalidOperation, ValueError) as exc:
-        raise ValueError(f"{field} must be a decimal string (e.g. '119.00'); got {raw!r}.") from exc
-
-
-def _parse_tax_rate(raw: str) -> Decimal:
-    rate = _parse_decimal(raw, field="tax_rate")
-    if rate < 1 and rate > 0:
-        rate = rate * Decimal("100")
-    if rate not in _SUPPORTED_RATES:
-        supported = ", ".join(str(r) for r in _SUPPORTED_RATES)
-        raise ValueError(f"tax_rate {rate}% is not supported (supported: {supported}%).")
-    return rate
-
-
-def _round(value: Decimal) -> Decimal:
-    return value.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-
-
-def _split_gross(gross: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
-    if rate == 0:
-        return _round(gross), Decimal("0.00")
-    divisor = Decimal("1") + (rate / Decimal("100"))
-    net = _round(gross / divisor)
-    tax = _round(gross - net)
-    return net, tax
 
 
 def register(server: FastMCP, config: Config) -> None:
@@ -104,25 +73,25 @@ def register(server: FastMCP, config: Config) -> None:
             ValueError: If ``amount_gross`` is invalid or negative,
                 or if ``tax_rate`` is unsupported.
         """
-        gross = _parse_decimal(amount_gross, field="amount_gross")
+        gross = parse_decimal(amount_gross, field="amount_gross")
         if gross < 0:
             raise ValueError(
                 f"amount_gross must be non-negative; got {gross}. "
                 "Storno of entertainment expenses is out of scope."
             )
 
-        rate = _parse_tax_rate(tax_rate)
+        rate = parse_tax_rate(tax_rate)
         deductible_pct = (
             _MITARBEITER_DEDUCTIBLE if is_employee_event else _GESCHAEFTSESSEN_DEDUCTIBLE
         )
         rule_name = "Mitarbeiterbewirtung 100%" if is_employee_event else "Geschäftsessen 70%"
 
         if config.mode is Mode.DEMO:
-            net, tax = _split_gross(gross, rate)
-            net_deductible = _round(net * deductible_pct / Decimal("100"))
-            net_non_deductible = _round(net - net_deductible)
+            net, tax = split_gross(gross, rate)
+            net_deductible = round_money(net * deductible_pct / Decimal("100"))
+            net_non_deductible = round_money(net - net_deductible)
             return {
-                "amount_gross": str(_round(gross)),
+                "amount_gross": str(round_money(gross)),
                 "amount_net": str(net),
                 "tax_amount": str(tax),
                 "tax_rate": str(rate),

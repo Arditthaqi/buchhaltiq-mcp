@@ -10,9 +10,10 @@ applies.
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp._money import parse_decimal, parse_tax_rate, round_money, split_gross
 from buchhaltiq_mcp.config import Mode
 from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 
@@ -21,11 +22,6 @@ if TYPE_CHECKING:
 
     from buchhaltiq_mcp.config import Config
 
-
-# Supported German VAT rates as percentage points. 16% (2020 COVID reduction)
-# is intentionally not in the demo set — backend handles it for historical
-# data, but exposing it via the LLM would invite unintended use.
-_SUPPORTED_RATES = (Decimal("0"), Decimal("7"), Decimal("19"))
 
 # DATEV BU-key table as used by the backend's tax_key_mapper.
 # Tuple shape: (rate, is_expense) -> (bu_key, description, is_vorsteuer).
@@ -37,45 +33,6 @@ _BU_KEY_TABLE: dict[tuple[Decimal, bool], tuple[int, str, bool]] = {
     (Decimal("19"), False): (3, "19% Umsatzsteuer (Regelsatz, Erlös)", False),
     (Decimal("19"), True): (9, "19% Vorsteuer (Regelsatz, Aufwand)", True),
 }
-
-_TWO_PLACES = Decimal("0.01")
-
-
-def _parse_decimal(raw: str, *, field: str) -> Decimal:
-    try:
-        return Decimal(raw)
-    except (InvalidOperation, ValueError) as exc:
-        raise ValueError(f"{field} must be a decimal string (e.g. '238.45'); got {raw!r}.") from exc
-
-
-def _parse_tax_rate(raw: str) -> Decimal:
-    """Accept '19', '19.0', '0.19' and normalise to percentage points."""
-    rate = _parse_decimal(raw, field="tax_rate")
-    # Allow '0.19' as a synonym for '19'.
-    if rate < 1 and rate > 0:
-        rate = rate * Decimal("100")
-    if rate not in _SUPPORTED_RATES:
-        supported = ", ".join(str(r) for r in _SUPPORTED_RATES)
-        raise ValueError(
-            f"tax_rate {rate}% is not supported in demo mode "
-            f"(supported: {supported}%). The backend handles others; "
-            f"keep them out of LLM-driven flows."
-        )
-    return rate
-
-
-def _round(value: Decimal) -> Decimal:
-    return value.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-
-
-def _split_gross(gross: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
-    """Return (net, tax) given a gross amount and a percentage-point rate."""
-    if rate == 0:
-        return _round(gross), Decimal("0.00")
-    divisor = Decimal("1") + (rate / Decimal("100"))
-    net = _round(gross / divisor)
-    tax = _round(gross - net)
-    return net, tax
 
 
 def register(server: FastMCP, config: Config) -> None:
@@ -108,19 +65,19 @@ def register(server: FastMCP, config: Config) -> None:
             ValueError: If ``amount_gross`` is not a valid decimal,
                 ``tax_rate`` is not parseable, or the rate is unsupported.
         """
-        gross = _parse_decimal(amount_gross, field="amount_gross")
+        gross = parse_decimal(amount_gross, field="amount_gross")
         if gross < 0:
             raise ValueError(
                 f"amount_gross must be non-negative; got {gross}. "
                 "Refunds and storno are out of scope for this tool."
             )
 
-        rate = _parse_tax_rate(tax_rate)
+        rate = parse_tax_rate(tax_rate)
 
         if config.mode is Mode.DEMO:
-            net, tax = _split_gross(gross, rate)
+            net, tax = split_gross(gross, rate)
             return {
-                "amount_gross": str(_round(gross)),
+                "amount_gross": str(round_money(gross)),
                 "amount_net": str(net),
                 "tax_amount": str(tax),
                 "tax_rate": str(rate),
@@ -161,7 +118,7 @@ def register(server: FastMCP, config: Config) -> None:
         Raises:
             ValueError: If the rate is unsupported.
         """
-        rate = _parse_tax_rate(tax_rate)
+        rate = parse_tax_rate(tax_rate)
         bu_key, description, is_vorsteuer = _BU_KEY_TABLE[(rate, is_expense)]
         return {
             "bu_key": bu_key,

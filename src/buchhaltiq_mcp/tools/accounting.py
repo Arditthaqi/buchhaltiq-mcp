@@ -12,9 +12,10 @@ POST /api/accounting/resolve endpoint.
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp._money import parse_decimal, parse_tax_rate, round_money, split_gross
 from buchhaltiq_mcp.config import Mode
 from buchhaltiq_mcp.exceptions import NotFoundError, ProductionNotImplementedError
 from buchhaltiq_mcp.fixtures import load_categories, load_datev_accounts
@@ -26,8 +27,6 @@ if TYPE_CHECKING:
     from buchhaltiq_mcp.config import Config
 
 
-_TWO_PLACES = Decimal("0.01")
-_SUPPORTED_RATES = (Decimal("0"), Decimal("7"), Decimal("19"))
 _VALID_SKRS = ("SKR03", "SKR04")
 _VALID_PAYMENT_METHODS = ("bank", "cash")
 
@@ -48,36 +47,6 @@ _PAYMENT_TO_CONTRA: dict[tuple[str, str], str] = {
     ("cash", "SKR03"): "1000",
     ("cash", "SKR04"): "1600",
 }
-
-
-def _parse_decimal(raw: str, *, field: str) -> Decimal:
-    try:
-        return Decimal(raw)
-    except (InvalidOperation, ValueError) as exc:
-        raise ValueError(f"{field} must be a decimal string; got {raw!r}.") from exc
-
-
-def _parse_tax_rate(raw: str) -> Decimal:
-    rate = _parse_decimal(raw, field="tax_rate")
-    if rate < 1 and rate > 0:
-        rate = rate * Decimal("100")
-    if rate not in _SUPPORTED_RATES:
-        supported = ", ".join(str(r) for r in _SUPPORTED_RATES)
-        raise ValueError(f"tax_rate {rate}% is not supported (supported: {supported}%).")
-    return rate
-
-
-def _round(value: Decimal) -> Decimal:
-    return value.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-
-
-def _split_gross(gross: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
-    if rate == 0:
-        return _round(gross), Decimal("0.00")
-    divisor = Decimal("1") + (rate / Decimal("100"))
-    net = _round(gross / divisor)
-    tax = _round(gross - net)
-    return net, tax
 
 
 def _find_category(category_id: str) -> AccountingCategory:
@@ -157,7 +126,7 @@ def register(server: FastMCP, config: Config) -> None:
                 f"got {payment_method!r}."
             )
 
-        gross = _parse_decimal(amount_gross, field="amount_gross")
+        gross = parse_decimal(amount_gross, field="amount_gross")
         if gross < 0:
             raise ValueError(f"amount_gross must be non-negative; got {gross}.")
 
@@ -166,7 +135,7 @@ def register(server: FastMCP, config: Config) -> None:
         # Resolve the effective rate: explicit input wins, else category
         # default. Tax-free categories override any non-zero input.
         raw_rate = tax_rate if tax_rate is not None else category.default_tax_rate
-        rate = _parse_tax_rate(raw_rate)
+        rate = parse_tax_rate(raw_rate)
         if category.is_tax_free and rate != 0:
             rate = Decimal("0")
 
@@ -184,7 +153,7 @@ def register(server: FastMCP, config: Config) -> None:
             debit_account, credit_account = contra_account, booking_account
 
         if config.mode is Mode.DEMO:
-            net, tax = _split_gross(gross, rate)
+            net, tax = split_gross(gross, rate)
 
             booking_entry = _find_account(normalised_skr, booking_account)
             contra_entry = _find_account(normalised_skr, contra_account)
@@ -213,7 +182,7 @@ def register(server: FastMCP, config: Config) -> None:
                 "bu_key": bu_key,
                 "bu_key_description": bu_description,
                 "tax_rate": str(rate),
-                "amount_gross": str(_round(gross)),
+                "amount_gross": str(round_money(gross)),
                 "amount_net": str(net),
                 "tax_amount": str(tax),
                 "payment_method": normalised_payment,

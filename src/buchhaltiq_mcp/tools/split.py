@@ -12,11 +12,12 @@ and ``dxso_xml_builder.py`` (the position-emit pipeline).
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict
 
+from buchhaltiq_mcp._money import parse_decimal, parse_tax_rate, round_money, split_gross
 from buchhaltiq_mcp.config import Mode
 from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 
@@ -24,10 +25,6 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
     from buchhaltiq_mcp.config import Config
-
-
-_TWO_PLACES = Decimal("0.01")
-_SUPPORTED_RATES = (Decimal("0"), Decimal("7"), Decimal("19"))
 
 
 class PositionInput(BaseModel):
@@ -38,40 +35,6 @@ class PositionInput(BaseModel):
     amount_gross: str
     tax_rate: str
     description: str | None = None
-
-
-def _parse_decimal(raw: str, *, field: str, position_idx: int | None = None) -> Decimal:
-    where = f" (position {position_idx})" if position_idx is not None else ""
-    try:
-        return Decimal(raw)
-    except (InvalidOperation, ValueError) as exc:
-        raise ValueError(f"{field}{where} must be a decimal string; got {raw!r}.") from exc
-
-
-def _parse_tax_rate(raw: str, *, position_idx: int) -> Decimal:
-    rate = _parse_decimal(raw, field="tax_rate", position_idx=position_idx)
-    if rate < 1 and rate > 0:
-        rate = rate * Decimal("100")
-    if rate not in _SUPPORTED_RATES:
-        supported = ", ".join(str(r) for r in _SUPPORTED_RATES)
-        raise ValueError(
-            f"tax_rate {rate}% (position {position_idx}) is not supported "
-            f"(supported: {supported}%)."
-        )
-    return rate
-
-
-def _round(value: Decimal) -> Decimal:
-    return value.quantize(_TWO_PLACES, rounding=ROUND_HALF_UP)
-
-
-def _split_gross(gross: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
-    if rate == 0:
-        return _round(gross), Decimal("0.00")
-    divisor = Decimal("1") + (rate / Decimal("100"))
-    net = _round(gross / divisor)
-    tax = _round(gross - net)
-    return net, tax
 
 
 def register(server: FastMCP, config: Config) -> None:
@@ -127,18 +90,18 @@ def register(server: FastMCP, config: Config) -> None:
         total_tax = Decimal("0.00")
 
         for idx, pos in enumerate(positions):
-            gross = _parse_decimal(pos.amount_gross, field="amount_gross", position_idx=idx)
+            gross = parse_decimal(pos.amount_gross, field="amount_gross", position_idx=idx)
             if gross < 0:
                 raise ValueError(
                     f"amount_gross (position {idx}) must be non-negative; got {gross}."
                 )
-            rate = _parse_tax_rate(pos.tax_rate, position_idx=idx)
-            net, tax = _split_gross(gross, rate)
+            rate = parse_tax_rate(pos.tax_rate, position_idx=idx)
+            net, tax = split_gross(gross, rate)
 
             enriched.append(
                 {
                     "description": pos.description,
-                    "amount_gross": str(_round(gross)),
+                    "amount_gross": str(round_money(gross)),
                     "amount_net": str(net),
                     "tax_amount": str(tax),
                     "tax_rate": str(rate),
@@ -165,29 +128,29 @@ def register(server: FastMCP, config: Config) -> None:
 
         warnings: list[str] = []
         if expected_total_gross is not None:
-            expected = _parse_decimal(expected_total_gross, field="expected_total_gross")
-            if _round(expected) != _round(total_gross):
+            expected = parse_decimal(expected_total_gross, field="expected_total_gross")
+            if round_money(expected) != round_money(total_gross):
                 warnings.append(
-                    f"Sum of position grosses ({_round(total_gross)}) does not match "
-                    f"expected_total_gross ({_round(expected)}). Difference: "
-                    f"{_round(total_gross - expected)}."
+                    f"Sum of position grosses ({round_money(total_gross)}) does not match "
+                    f"expected_total_gross ({round_money(expected)}). Difference: "
+                    f"{round_money(total_gross - expected)}."
                 )
 
         if config.mode is Mode.DEMO:
             breakdown_by_rate = {
                 str(rate): {
-                    "gross": str(_round(b["gross"])),  # type: ignore[arg-type]
-                    "net": str(_round(b["net"])),  # type: ignore[arg-type]
-                    "tax": str(_round(b["tax"])),  # type: ignore[arg-type]
+                    "gross": str(round_money(b["gross"])),  # type: ignore[arg-type]
+                    "net": str(round_money(b["net"])),  # type: ignore[arg-type]
+                    "tax": str(round_money(b["tax"])),  # type: ignore[arg-type]
                     "position_count": b["position_count"],
                 }
                 for rate, b in sorted(per_rate.items())
             }
             return {
                 "positions": enriched,
-                "total_gross": str(_round(total_gross)),
-                "total_net": str(_round(total_net)),
-                "total_tax": str(_round(total_tax)),
+                "total_gross": str(round_money(total_gross)),
+                "total_net": str(round_money(total_net)),
+                "total_tax": str(round_money(total_tax)),
                 "has_mixed_tax": len(per_rate) > 1,
                 "breakdown_by_rate": breakdown_by_rate,
                 "warnings": warnings,
