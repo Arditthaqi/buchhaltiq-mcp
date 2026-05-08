@@ -23,6 +23,8 @@ For a detailed breakdown of what data flows where — and the GDPR/DSGVO obligat
 
 For end-to-end conversational examples (overdue invoices, monthly summaries, batch categorization, customer briefings) see [`examples/workflows/`](examples/workflows/).
 
+For the system design behind the server — components, the demo↔production mode switch, the seven-step pattern for adding a tool — see [`docs/architecture.md`](docs/architecture.md).
+
 ## Status
 
 **Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:
