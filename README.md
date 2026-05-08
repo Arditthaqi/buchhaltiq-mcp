@@ -23,19 +23,18 @@ For a detailed breakdown of what data flows where — and the GDPR/DSGVO obligat
 
 ## Status
 
-**Phase 1 — work in progress.** Currently implemented:
+**Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:
 
 - ✅ Mode-switching configuration (env-driven)
-- ✅ `list_invoices` (demo mode complete; production stub raises a clear error)
-- ✅ `get_customer` (demo mode complete; production stub raises a clear error)
-- ✅ `search_belege` (demo mode complete; production stub raises a clear error)
-- ✅ `monthly_report` (demo mode complete; production stub raises a clear error)
+- ✅ `list_invoices` — list invoices with status / customer / date-range filters
+- ✅ `get_customer` — single-customer detail lookup
+- ✅ `search_belege` — full-text search over receipts
+- ✅ `monthly_report` — BWA-style monthly P&L summary
+- ✅ `categorize_transaction` — explainable rule-based German-accounting categorization
 - ✅ Pydantic models for invoices, customers, receipts, monthly reports
 - ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts)
 
-Planned for Phase 1 completion:
-
-- `categorize_transaction` — smart-categorization (BuchhaltIQ's open-sourced rules)
+Each tool's production-mode pathway raises `ProductionNotImplementedError` with a message guiding the operator back to demo mode until the live BuchhaltIQ API binding lands in Phase 2.
 
 ## Quick Start
 
@@ -92,7 +91,8 @@ buchhaltiq-mcp/
 │       ├── invoices.py        list_invoices
 │       ├── customers.py       get_customer
 │       ├── belege.py          search_belege
-│       └── reports.py         monthly_report
+│       ├── reports.py         monthly_report
+│       └── categorize.py      categorize_transaction
 ├── data/                      Demo fixtures (German SMB context).
 │   ├── customers.json
 │   ├── invoices.json
