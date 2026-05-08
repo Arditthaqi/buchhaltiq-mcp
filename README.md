@@ -42,8 +42,9 @@ For an exhaustive parameter and response reference for every tool, see [`docs/to
 - ✅ `validate_datev_account` — verify SKR03 / SKR04 account numbers + suggest near-matches
 - ✅ `apply_bewirtung_rule` — German 70/30 entertainment-deduction rule with full Vorsteuer recovery
 - ✅ `split_mixed_tax_receipt` — split a multi-rate receipt into per-rate buckets with sum validation
-- ✅ Pydantic models for invoices, customers, receipts, monthly reports, DATEV accounts
-- ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts, 26 SKR accounts)
+- ✅ `resolve_account_assignment` — full DATEV Kontierung: SKR account + contra + BU-key + debit/credit
+- ✅ Pydantic models for invoices, customers, receipts, monthly reports, DATEV accounts, accounting categories
+- ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts, 26 SKR accounts, 7 accounting categories)
 
 Each tool's production-mode pathway raises `ProductionNotImplementedError` with a message guiding the operator back to demo mode until the live BuchhaltIQ API binding lands in Phase 2.
 
@@ -107,7 +108,8 @@ buchhaltiq-mcp/
 │       ├── vat.py             extract_vat_from_receipt, map_tax_rate_to_bu_key
 │       ├── datev.py           validate_datev_account
 │       ├── bewirtung.py       apply_bewirtung_rule
-│       └── split.py           split_mixed_tax_receipt
+│       ├── split.py           split_mixed_tax_receipt
+│       └── accounting.py      resolve_account_assignment
 ├── data/                      Demo fixtures (German SMB context).
 │   ├── customers.json
 │   ├── invoices.json

@@ -87,3 +87,17 @@ class DatevAccount(BaseModel):
     account: str
     title: str
     type: str
+
+
+class AccountingCategory(BaseModel):
+    """A BuchhaltIQ accounting category mapped to SKR03 / SKR04 accounts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category_id: str
+    title: str
+    side: str  # "expense" or "revenue"
+    default_tax_rate: str
+    skr03_account: str
+    skr04_account: str
+    is_tax_free: bool = False

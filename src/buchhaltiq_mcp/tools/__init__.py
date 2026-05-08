@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from buchhaltiq_mcp.tools import (
+    accounting,
     belege,
     bewirtung,
     categorize,
@@ -38,3 +39,4 @@ def register_all(server: FastMCP, config: Config) -> None:
     datev.register(server, config)
     bewirtung.register(server, config)
     split.register(server, config)
+    accounting.register(server, config)

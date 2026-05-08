@@ -1,0 +1,65 @@
+[
+  {
+    "category_id": "wareneinkauf_material",
+    "title": "Wareneinkauf Material",
+    "side": "expense",
+    "default_tax_rate": "19",
+    "skr03_account": "3400",
+    "skr04_account": "5400",
+    "is_tax_free": false
+  },
+  {
+    "category_id": "bewirtung_geschaeftsessen",
+    "title": "Bewirtungskosten Geschäftsessen (70% abziehbar)",
+    "side": "expense",
+    "default_tax_rate": "19",
+    "skr03_account": "4650",
+    "skr04_account": "6650",
+    "is_tax_free": false
+  },
+  {
+    "category_id": "personal_sozialabgaben",
+    "title": "Gesetzliche soziale Aufwendungen",
+    "side": "expense",
+    "default_tax_rate": "0",
+    "skr03_account": "4130",
+    "skr04_account": "6100",
+    "is_tax_free": true
+  },
+  {
+    "category_id": "miete_pacht",
+    "title": "Miete (unbewegliche Wirtschaftsgüter)",
+    "side": "expense",
+    "default_tax_rate": "0",
+    "skr03_account": "4210",
+    "skr04_account": "6300",
+    "is_tax_free": true
+  },
+  {
+    "category_id": "buerobedarf",
+    "title": "Sonstige Aufwendungen / Bürobedarf",
+    "side": "expense",
+    "default_tax_rate": "19",
+    "skr03_account": "4980",
+    "skr04_account": "6815",
+    "is_tax_free": false
+  },
+  {
+    "category_id": "erloese_19",
+    "title": "Erlöse 19% USt",
+    "side": "revenue",
+    "default_tax_rate": "19",
+    "skr03_account": "8400",
+    "skr04_account": "4400",
+    "is_tax_free": false
+  },
+  {
+    "category_id": "erloese_7",
+    "title": "Erlöse 7% USt",
+    "side": "revenue",
+    "default_tax_rate": "7",
+    "skr03_account": "8300",
+    "skr04_account": "4300",
+    "is_tax_free": false
+  }
+]
