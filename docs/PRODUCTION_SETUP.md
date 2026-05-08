@@ -23,7 +23,25 @@ The server is driven by three environment variables:
 |---|---|---|---|
 | `BUCHHALTIQ_MCP_MODE` | yes | `production` | Default is `demo`. Set this to flip the wired tools to call the backend. |
 | `BUCHHALTIQ_API_BASE_URL` | yes | `http://localhost:8080` | No trailing slash. Strip the `/api/...` prefix — that lives in the client. |
-| `BUCHHALTIQ_API_KEY` | optional today | `<firebase id token>` | Currently unused by the two wired endpoints (they are public). Forward-looking placeholder for the read endpoints that will use Firebase ID tokens. |
+| `BUCHHALTIQ_API_KEY` | **required** for the four read endpoints | `<firebase id token>` | A Firebase ID token belonging to the operator's BuchhaltIQ account. Tokens expire after 1 hour — for repeated testing, refresh manually. The validate / resolve endpoints stay public, so this is only required for `list_invoices`, `get_customer`, `search_belege`, `monthly_report`. |
+
+## Getting a Firebase ID token for testing
+
+For a one-shot test from your own BuchhaltIQ account, the simplest path is to grab a token via the Firebase SDK in any environment that has your account credentials:
+
+```python
+import firebase_admin
+from firebase_admin import auth, credentials
+
+cred = credentials.Certificate("/path/to/service-account-key.json")
+firebase_admin.initialize_app(cred)
+
+# This requires an existing Firebase user UID — generate a custom token,
+# exchange it via the REST API for an ID token, and you have your Bearer.
+custom_token = auth.create_custom_token("<your-firebase-uid>")
+```
+
+For interactive testing the Flutter app or any client that already logs you in is the fastest source of an ID token (open the network panel, copy the Bearer header).
 
 ## Claude Desktop wiring
 
@@ -86,10 +104,10 @@ The two wired tools return the **same top-level keys** in production as in demo 
 | `categorize_transaction` | ✅ same as demo (rule-based) | Rule engine has no backend; works identically in both modes. |
 | `validate_datev_account` | ✅ **wired to `GET /api/accounting/validate`** | Falls through to backend; returns enriched response. |
 | `resolve_account_assignment` | ✅ **wired to `POST /api/accounting/resolve`** | Falls through to backend; returns enriched response. |
-| `list_invoices` | ❌ stub (no admin route exists) | Backend needs `GET /api/invoices?...` with owner-scoped query. |
-| `get_customer` | ❌ stub (no single-customer GET) | Backend needs `GET /api/customers/{id}`. |
-| `search_belege` | ❌ stub (no search route) | Backend needs `GET /api/belege?q=...` (or similar over Transaktionen). |
-| `monthly_report` | ❌ stub (no aggregation route) | Either build `GET /api/reports/monthly` on the backend, or aggregate client-side once `list_invoices` and `search_belege` are wired. |
+| `list_invoices` | ✅ **wired to `GET /api/user-invoices/list`** | Requires the backend route block from [`BACKEND_ENDPOINTS_TO_ADD.md`](BACKEND_ENDPOINTS_TO_ADD.md). Firebase token auth. |
+| `get_customer` | ✅ **wired to `GET /api/user-invoices/customers`** | Same; aggregate fetched, filtered client-side by id. |
+| `search_belege` | ✅ **wired to `GET /api/user-invoices/transactions`** | Same; bank transactions projected as Belege. |
+| `monthly_report` | ✅ **wired to `GET /api/user-invoices/monthly-report`** | Same; aggregation runs on the backend. |
 
 ## Troubleshooting
 

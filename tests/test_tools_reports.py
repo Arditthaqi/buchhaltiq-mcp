@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
+import respx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -108,6 +110,30 @@ async def test_monthly_report_invalid_year_raises(server_demo: FastMCP) -> None:
         await _call_monthly_report(server_demo, year=1999, month=6)
 
 
-async def test_monthly_report_production_raises_clear_error(server_prod: FastMCP) -> None:
-    with pytest.raises(ToolError, match="not yet wired"):
-        await _call_monthly_report(server_prod, year=2026, month=1)
+@respx.mock
+async def test_monthly_report_production_passes_through_backend(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/user-invoices/monthly-report"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "year": 2026,
+                "month": 3,
+                "revenue_total": "5400.00",
+                "expense_total": "1200.50",
+                "profit": "4199.50",
+                "currency": "EUR",
+                "invoice_count": 4,
+                "beleg_count": 12,
+            },
+        )
+    )
+
+    report = await _call_monthly_report(server_prod, year=2026, month=3)
+    assert report["revenue_total"] == "5400.00"
+    assert report["expense_total"] == "1200.50"
+    assert report["profit"] == "4199.50"
+    assert report["invoice_count"] == 4
+    assert report["beleg_count"] == 12

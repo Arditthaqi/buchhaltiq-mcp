@@ -22,6 +22,10 @@ if TYPE_CHECKING:
 # is a one-line change.
 _VALIDATE_PATH = "/api/accounting/validate/{skr}/{account}"
 _RESOLVE_PATH = "/api/accounting/resolve"
+_INVOICES_LIST_PATH = "/api/user-invoices/list"
+_CUSTOMERS_LIST_PATH = "/api/user-invoices/customers"
+_TRANSACTIONS_SEARCH_PATH = "/api/user-invoices/transactions"
+_MONTHLY_REPORT_PATH = "/api/user-invoices/monthly-report"
 
 
 class BuchhaltIQAPIError(Exception):
@@ -54,10 +58,11 @@ class BuchhaltIQClient:
             self._headers["Authorization"] = f"Bearer {config.api_key}"
         self._timeout = timeout
 
-    async def _get(self, path: str) -> dict[str, Any]:
+    async def _get(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
+        clean_params = {k: v for k, v in params.items() if v is not None} if params else None
         async with httpx.AsyncClient(timeout=self._timeout) as http:
-            response = await http.get(url, headers=self._headers)
+            response = await http.get(url, headers=self._headers, params=clean_params)
         return self._unwrap(response, url)
 
     async def _post(self, path: str, json: dict[str, Any]) -> dict[str, Any]:
@@ -112,3 +117,51 @@ class BuchhaltIQClient:
         if description is not None:
             body["description"] = description
         return await self._post(_RESOLVE_PATH, body)
+
+    async def list_invoices(
+        self,
+        *,
+        status: str | None = None,
+        customer_id: str | None = None,
+        issued_from: str | None = None,
+        issued_to: str | None = None,
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """Wrap GET /api/user-invoices/list. Returns ``{items, count}``."""
+        return await self._get(
+            _INVOICES_LIST_PATH,
+            params={
+                "status": status,
+                "customer_id": customer_id,
+                "issued_from": issued_from,
+                "issued_to": issued_to,
+                "limit": limit,
+            },
+        )
+
+    async def list_customers(self) -> dict[str, Any]:
+        """Wrap GET /api/user-invoices/customers. Returns ``{items, count}``."""
+        return await self._get(_CUSTOMERS_LIST_PATH)
+
+    async def search_transactions(
+        self,
+        *,
+        q: str,
+        issued_from: str | None = None,
+        issued_to: str | None = None,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """Wrap GET /api/user-invoices/transactions. Returns ``{items, count}``."""
+        return await self._get(
+            _TRANSACTIONS_SEARCH_PATH,
+            params={
+                "q": q,
+                "issued_from": issued_from,
+                "issued_to": issued_to,
+                "limit": limit,
+            },
+        )
+
+    async def monthly_report(self, *, year: int, month: int) -> dict[str, Any]:
+        """Wrap GET /api/user-invoices/monthly-report. Returns the aggregate dict."""
+        return await self._get(_MONTHLY_REPORT_PATH, params={"year": year, "month": month})

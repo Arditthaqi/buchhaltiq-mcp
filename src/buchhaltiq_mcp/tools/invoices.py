@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 from buchhaltiq_mcp.fixtures import load_invoices
 from buchhaltiq_mcp.models import Invoice, InvoiceStatus
 
@@ -37,6 +37,7 @@ def _filter_demo_invoices(
 
 def register(server: FastMCP, config: Config) -> None:
     """Register the invoice tools onto ``server``."""
+    client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
 
     @server.tool()
     async def list_invoices(
@@ -71,7 +72,13 @@ def register(server: FastMCP, config: Config) -> None:
             invoices.sort(key=lambda inv: inv.issue_date, reverse=True)
             return [inv.model_dump(mode="json") for inv in invoices[:capped_limit]]
 
-        raise ProductionNotImplementedError(
-            "list_invoices is not yet wired to the production BuchhaltIQ API. "
-            "Set BUCHHALTIQ_MCP_MODE=demo to use fixture data."
+        # Production mode: delegate to the backend.
+        assert client is not None
+        backend = await client.list_invoices(
+            status=status.value if status else None,
+            customer_id=customer_id,
+            issued_from=issued_from.isoformat() if issued_from else None,
+            issued_to=issued_to.isoformat() if issued_to else None,
+            limit=capped_limit,
         )
+        return list(backend.get("items") or [])

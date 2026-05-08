@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
+import respx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -60,6 +62,53 @@ async def test_get_customer_demo_empty_id_raises_validation(server_demo: FastMCP
         await _call_get_customer(server_demo, customer_id="   ")
 
 
-async def test_get_customer_production_raises_clear_error(server_prod: FastMCP) -> None:
-    with pytest.raises(ToolError, match="not yet wired"):
-        await _call_get_customer(server_prod, customer_id="cust_001")
+@respx.mock
+async def test_get_customer_production_filters_backend_aggregate(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/user-invoices/customers"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "cust_external_42",
+                        "name": "Restaurant Acme",
+                        "company_name": None,
+                        "contact_email": "info@acme.example",
+                        "city": "Berlin",
+                        "country": "DE",
+                        "vat_id": None,
+                        "tax_number": None,
+                    },
+                    {
+                        "id": "cust_external_43",
+                        "name": "Café Beta",
+                        "company_name": None,
+                        "contact_email": None,
+                        "city": "München",
+                        "country": "DE",
+                        "vat_id": None,
+                        "tax_number": None,
+                    },
+                ],
+                "count": 2,
+            },
+        )
+    )
+
+    row = await _call_get_customer(server_prod, customer_id="cust_external_43")
+    assert row["id"] == "cust_external_43"
+    assert row["name"] == "Café Beta"
+
+
+@respx.mock
+async def test_get_customer_production_unknown_id_raises(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/user-invoices/customers"
+    respx.get(backend_url).mock(return_value=httpx.Response(200, json={"items": [], "count": 0}))
+
+    with pytest.raises(ToolError, match="No customer with id"):
+        await _call_get_customer(server_prod, customer_id="cust_nope")

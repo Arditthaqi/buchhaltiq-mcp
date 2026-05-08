@@ -29,6 +29,8 @@ For an exhaustive parameter and response reference for every tool, see [`docs/to
 
 For pointing the server at a running BuchhaltIQ backend (production mode setup, env vars, smoke test, status of which tools are wired today), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md).
 
+For the four read endpoints the backend must add before all eleven tools work in production, see [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md) — copy-paste-ready FastAPI block.
+
 ## Status
 
 **Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:

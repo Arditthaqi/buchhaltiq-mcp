@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 from buchhaltiq_mcp.fixtures import load_belege
 from buchhaltiq_mcp.models import Beleg
 
@@ -29,6 +29,7 @@ def _search_demo_belege(query: str, limit: int) -> list[Beleg]:
 
 def register(server: FastMCP, config: Config) -> None:
     """Register the Beleg tools onto ``server``."""
+    client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
 
     @server.tool()
     async def search_belege(query: str, limit: int = 20) -> list[dict[str, Any]]:
@@ -60,7 +61,8 @@ def register(server: FastMCP, config: Config) -> None:
             results = _search_demo_belege(normalized_query, capped_limit)
             return [b.model_dump(mode="json") for b in results]
 
-        raise ProductionNotImplementedError(
-            "search_belege is not yet wired to the production BuchhaltIQ API. "
-            "Set BUCHHALTIQ_MCP_MODE=demo to use fixture data."
-        )
+        # Production mode: delegate to the backend, which substring-matches
+        # the user's bank transactions as Belege.
+        assert client is not None
+        backend = await client.search_transactions(q=normalized_query, limit=capped_limit)
+        return list(backend.get("items") or [])

@@ -5,8 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 from buchhaltiq_mcp.fixtures import load_belege, load_invoices
 from buchhaltiq_mcp.models import InvoiceStatus, MonthlyReport
 
@@ -45,6 +45,7 @@ def _build_demo_monthly_report(year: int, month: int) -> MonthlyReport:
 
 def register(server: FastMCP, config: Config) -> None:
     """Register the reporting tools onto ``server``."""
+    client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
 
     @server.tool()
     async def monthly_report(year: int, month: int) -> dict[str, Any]:
@@ -80,7 +81,6 @@ def register(server: FastMCP, config: Config) -> None:
             report = _build_demo_monthly_report(year, month)
             return report.model_dump(mode="json")
 
-        raise ProductionNotImplementedError(
-            "monthly_report is not yet wired to the production BuchhaltIQ API. "
-            "Set BUCHHALTIQ_MCP_MODE=demo to use fixture data."
-        )
+        # Production mode: delegate to the backend's aggregation endpoint.
+        assert client is not None
+        return await client.monthly_report(year=year, month=month)

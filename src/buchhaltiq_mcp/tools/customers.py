@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.exceptions import NotFoundError, ProductionNotImplementedError
+from buchhaltiq_mcp.exceptions import NotFoundError
 from buchhaltiq_mcp.fixtures import load_customers
 from buchhaltiq_mcp.models import Customer
 
@@ -24,6 +25,7 @@ def _find_demo_customer(customer_id: str) -> Customer:
 
 def register(server: FastMCP, config: Config) -> None:
     """Register the customer tools onto ``server``."""
+    client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
 
     @server.tool()
     async def get_customer(customer_id: str) -> dict[str, Any]:
@@ -49,7 +51,14 @@ def register(server: FastMCP, config: Config) -> None:
             customer = _find_demo_customer(normalized)
             return customer.model_dump(mode="json")
 
-        raise ProductionNotImplementedError(
-            "get_customer is not yet wired to the production BuchhaltIQ API. "
-            "Set BUCHHALTIQ_MCP_MODE=demo to use fixture data."
+        # Production mode: the backend exposes the customer aggregate as a list,
+        # so we fetch it once and filter client-side. The list is small
+        # (deduplicated from invoice snapshots, typically <100 entries).
+        assert client is not None
+        backend = await client.list_customers()
+        for entry in backend.get("items") or []:
+            if entry.get("id") == normalized:
+                return entry
+        raise NotFoundError(
+            f"No customer with id={normalized!r} exists in the BuchhaltIQ workspace."
         )

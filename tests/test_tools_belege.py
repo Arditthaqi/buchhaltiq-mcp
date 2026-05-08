@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
+import respx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -77,6 +79,29 @@ async def test_search_belege_demo_no_match_returns_empty(server_demo: FastMCP) -
     assert rows == []
 
 
-async def test_search_belege_production_raises_clear_error(server_prod: FastMCP) -> None:
-    with pytest.raises(ToolError, match="not yet wired"):
-        await _call_search_belege(server_prod, query="METRO")
+@respx.mock
+async def test_search_belege_production_calls_transactions_endpoint(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/user-invoices/transactions"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "tx_real_001",
+                        "issue_date": "2026-03-10",
+                        "vendor": "METRO Cash & Carry GmbH",
+                        "amount_gross": "-238.45",
+                        "category": None,
+                        "description": "Wareneinkauf METRO Filiale 42",
+                    }
+                ],
+                "count": 1,
+            },
+        )
+    )
+    rows = await _call_search_belege(server_prod, query="METRO")
+    assert len(rows) == 1
+    assert "METRO" in rows[0]["vendor"]

@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from datetime import date
 
+import httpx
 import pytest
+import respx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -81,8 +83,47 @@ async def test_list_invoices_demo_respects_limit(server_demo: FastMCP) -> None:
     assert len(rows) == 2
 
 
-async def test_list_invoices_production_raises_clear_error(server_prod: FastMCP) -> None:
-    # FastMCP wraps tool exceptions in ToolError; the underlying message must still
-    # mention that production mode isn't wired yet so the LLM can guide the user.
-    with pytest.raises(ToolError, match="not yet wired"):
+@respx.mock
+async def test_list_invoices_production_calls_backend_and_returns_items(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/user-invoices/list"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "inv_real_001",
+                        "invoice_number": "2026-001",
+                        "customer_id": "cust_external_42",
+                        "customer_name": "Restaurant Acme",
+                        "issue_date": "2026-03-04",
+                        "due_date": "2026-04-03",
+                        "status": "open",
+                        "total_net": "200.38",
+                        "total_gross": "238.45",
+                        "currency": "EUR",
+                        "description": "",
+                    }
+                ],
+                "count": 1,
+            },
+        )
+    )
+
+    rows = await _call_list_invoices(server_prod, status=InvoiceStatus.OPEN.value)
+    assert len(rows) == 1
+    assert rows[0]["id"] == "inv_real_001"
+    assert rows[0]["status"] == "open"
+
+
+@respx.mock
+async def test_list_invoices_production_propagates_backend_5xx(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/user-invoices/list"
+    respx.get(backend_url).mock(return_value=httpx.Response(503, text="Firestore unavailable"))
+
+    with pytest.raises(ToolError, match="503"):
         await _call_list_invoices(server_prod)
