@@ -75,6 +75,7 @@ For production mode (live backend), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUC
 | Doc | What you get |
 |---|---|
 | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | Narrative writeup: why the project exists, architecture decisions, May 8 validation, what's next |
+| [`docs/TARGET_ARCHITECTURE.md`](docs/TARGET_ARCHITECTURE.md) | What a production-grade multi-tenant deployment looks like; phased migration path |
 | [`docs/architecture.md`](docs/architecture.md) | System design + Mermaid diagram, the seven-step pattern for adding a tool |
 | [`docs/tools-reference.md`](docs/tools-reference.md) | Exhaustive parameter / response / error reference for every tool |
 | [`docs/PRIVACY.md`](docs/PRIVACY.md) | Data flow + GDPR / DSGVO obligations table |
