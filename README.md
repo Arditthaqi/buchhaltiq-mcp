@@ -31,6 +31,8 @@ For pointing the server at a running BuchhaltIQ backend (production mode setup, 
 
 For the four read endpoints the backend must add before all eleven tools work in production, see [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md) — copy-paste-ready FastAPI block.
 
+For a narrative writeup of why the project exists, what the architecture decisions are, and what it proves, see [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md).
+
 ## Status
 
 **Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:
