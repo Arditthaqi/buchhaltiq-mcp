@@ -19,6 +19,8 @@ The server ships in two modes: a **demo mode** that runs entirely on local JSON 
 
 Demo mode keeps the public repository risk-free: no real customer data ever flows through example workflows, GitHub Actions, or third-party demos. Production mode lets a BuchhaltIQ user point the same MCP server at their live workspace.
 
+For a detailed breakdown of what data flows where — and the GDPR/DSGVO obligations that apply once production mode is enabled — see [`docs/PRIVACY.md`](docs/PRIVACY.md).
+
 ## Status
 
 **Phase 1 — work in progress.** Currently implemented:
