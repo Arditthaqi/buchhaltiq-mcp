@@ -3,56 +3,40 @@
 > Model Context Protocol server for **[BuchhaltIQ](https://buchhaltiq.de)** — the mobile-first accounting product for German SMBs by [Born — Theoretical Software](https://bornsoftware.de).
 
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-1B2A4E)
+![Tests](https://img.shields.io/badge/tests-114%20passing-3a8a3a)
 ![License](https://img.shields.io/badge/license-MIT-D17B0F)
 ![MCP](https://img.shields.io/badge/protocol-MCP-2D8A87)
 
-This repository demonstrates the **"SaaS-makes-its-own-product-MCP-ready"** pattern: a software vendor exposing its own product's domain (invoices, customers, receipts, monthly reports) over the Model Context Protocol so that Claude Desktop and other MCP clients can drive it directly.
+`buchhaltiq-mcp` exposes a German-SMB accounting domain — invoices, customers, bank-transaction Belege, monthly P&L, full DATEV Kontierung — as eleven Model Context Protocol tools. Drop it into Claude Desktop and ask in natural German: *"Wie war mein April? Erklär mir auch die ausgeschlossenen Aufwendungen."* Claude calls the relevant tools, gets real data back, and answers.
 
-The server ships in two modes: a **demo mode** that runs entirely on local JSON fixtures (no API key, no account, fully reproducible), and a **production mode** that talks to the real BuchhaltIQ API.
+The server ships in **two modes** that share one tool definition: a `demo` mode against deterministic JSON fixtures (no API key, no account, fully reproducible) and a `production` mode against the live BuchhaltIQ backend. End-to-end validated against real Firestore data on May 8, 2026 — see [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md).
 
 ## Why two modes?
 
-| Mode | When to use it | Data source |
+| Mode | When | Data source |
 |---|---|---|
-| `demo` (default) | Trying out the server, building example workflows, public reproduction in this repo's tests and CI. | Realistic German-SMB fixtures shipped under [`data/`](data/) — restaurants, bakeries, tax offices. |
-| `production` | Driving the actual BuchhaltIQ workspace from Claude. Requires a `BUCHHALTIQ_API_KEY` and the `production` mode flag. | The real BuchhaltIQ REST API at `api.buchhaltiq.de`. |
+| `demo` (default) | Trying out the server, running tests, shipping public examples. | Realistic German-SMB fixtures under [`data/`](data/) — restaurants, bakeries, tax offices, plus 26 real SKR03/SKR04 accounts and 7 BuchhaltIQ category mappings. |
+| `production` | Driving a live BuchhaltIQ workspace. Requires the backend running and a Firebase ID token. | The live BuchhaltIQ REST API. |
 
-Demo mode keeps the public repository risk-free: no real customer data ever flows through example workflows, GitHub Actions, or third-party demos. Production mode lets a BuchhaltIQ user point the same MCP server at their live workspace.
+Demo mode keeps the public repository GDPR-safe — no real customer data flows through the test suite, GitHub Actions, or the example workflows. Production mode is a single env-var flip away.
 
-For a detailed breakdown of what data flows where — and the GDPR/DSGVO obligations that apply once production mode is enabled — see [`docs/PRIVACY.md`](docs/PRIVACY.md).
+## The eleven tools
 
-For end-to-end conversational examples (overdue invoices, monthly summaries, batch categorization, customer briefings) see [`examples/workflows/`](examples/workflows/).
+| | Tool | What it does |
+|---|---|---|
+| 📑 | `list_invoices` | List invoices with status / customer / date-range filters, newest first |
+| 👤 | `get_customer` | Fetch a single customer by ID |
+| 🔍 | `search_belege` | Substring search over receipts (vendor + description), case-insensitive |
+| 📊 | `monthly_report` | BWA-style P&L summary; production mode filters by `posting_class` so internal transfers / tax pre-payments / capital movements don't pollute the expense total |
+| 🏷️ | `categorize_transaction` | Rule-based vendor → German-accounting category, with the rule's rationale returned alongside |
+| 💶 | `extract_vat_from_receipt` | Split a gross amount into net + VAT at 0/7/19%, Decimal-precise with ROUND_HALF_UP |
+| 🔑 | `map_tax_rate_to_bu_key` | DATEV BU-Schlüssel lookup (2/3/8/9/40) for purchase vs sales side |
+| ✅ | `validate_datev_account` | Verify SKR03/SKR04 account numbers; suggest near-matches on miss |
+| 🍴 | `apply_bewirtung_rule` | German § 4 Abs. 5 Nr. 2 EStG entertainment-deduction rule with full Vorsteuer recovery — flags the trap that the 70/30 split applies to income-tax only |
+| 🧾 | `split_mixed_tax_receipt` | Aggregate per-rate breakdown of a multi-rate receipt (the canonical METRO run with 7% food + 19% non-food + 0% Pfand) |
+| 📚 | `resolve_account_assignment` | Full DATEV Kontierung from a BuchhaltIQ category: account, contra-account, BU-key, debit/credit side, Decimal net/tax/gross |
 
-For the system design behind the server — components, the demo↔production mode switch, the seven-step pattern for adding a tool — see [`docs/architecture.md`](docs/architecture.md).
-
-For an exhaustive parameter and response reference for every tool, see [`docs/tools-reference.md`](docs/tools-reference.md).
-
-For pointing the server at a running BuchhaltIQ backend (production mode setup, env vars, smoke test, status of which tools are wired today), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md).
-
-For the four read endpoints the backend must add before all eleven tools work in production, see [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md) — copy-paste-ready FastAPI block.
-
-For a narrative writeup of why the project exists, what the architecture decisions are, and what it proves, see [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md).
-
-## Status
-
-**Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:
-
-- ✅ Mode-switching configuration (env-driven)
-- ✅ `list_invoices` — list invoices with status / customer / date-range filters
-- ✅ `get_customer` — single-customer detail lookup
-- ✅ `search_belege` — full-text search over receipts
-- ✅ `monthly_report` — BWA-style monthly P&L summary
-- ✅ `categorize_transaction` — explainable rule-based German-accounting categorization
-- ✅ `extract_vat_from_receipt` — split gross into net + VAT (0/7/19%, Decimal precision)
-- ✅ `map_tax_rate_to_bu_key` — DATEV BU-key lookup for Vorsteuer / Umsatzsteuer
-- ✅ `validate_datev_account` — verify SKR03 / SKR04 account numbers + suggest near-matches
-- ✅ `apply_bewirtung_rule` — German 70/30 entertainment-deduction rule with full Vorsteuer recovery
-- ✅ `split_mixed_tax_receipt` — split a multi-rate receipt into per-rate buckets with sum validation
-- ✅ `resolve_account_assignment` — full DATEV Kontierung: SKR account + contra + BU-key + debit/credit
-- ✅ Pydantic models for invoices, customers, receipts, monthly reports, DATEV accounts, accounting categories
-- ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts, 26 SKR accounts, 7 accounting categories)
-
-Each tool's production-mode pathway raises `ProductionNotImplementedError` with a message guiding the operator back to demo mode until the live BuchhaltIQ API binding lands in Phase 2.
+Full parameter reference in [`docs/tools-reference.md`](docs/tools-reference.md).
 
 ## Quick Start
 
@@ -60,68 +44,81 @@ Each tool's production-mode pathway raises `ProductionNotImplementedError` with 
 # Clone + dev install
 git clone https://github.com/Arditthaqi/buchhaltiq-mcp.git
 cd buchhaltiq-mcp
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Run tests
+# Run the test suite (114 tests, demo mode)
 pytest
 
 # Start the server in demo mode (default)
 python -m buchhaltiq_mcp
 ```
 
-To wire it into Claude Desktop, drop this snippet into `claude_desktop_config.json`:
+To wire it into Claude Desktop, drop this into `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "buchhaltiq": {
-      "command": "buchhaltiq-mcp"
+      "command": "/absolute/path/to/.venv/bin/buchhaltiq-mcp"
     }
   }
 }
 ```
 
-For production mode, set the env vars:
+Restart Claude Desktop and ask: *"Zeig mir die überfälligen Rechnungen aus Q1 2026."*
 
-```bash
-export BUCHHALTIQ_MCP_MODE=production
-export BUCHHALTIQ_API_KEY="your-key-here"
-buchhaltiq-mcp
-```
+For production mode (live backend), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md). For the four FastAPI routes the backend must add to enable the read tools, see [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md).
+
+## Documentation map
+
+| Doc | What you get |
+|---|---|
+| [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | Narrative writeup: why the project exists, architecture decisions, May 8 validation, what's next |
+| [`docs/architecture.md`](docs/architecture.md) | System design + Mermaid diagram, the seven-step pattern for adding a tool |
+| [`docs/tools-reference.md`](docs/tools-reference.md) | Exhaustive parameter / response / error reference for every tool |
+| [`docs/PRIVACY.md`](docs/PRIVACY.md) | Data flow + GDPR / DSGVO obligations table |
+| [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md) | Env vars, smoke test, status of which tools are wired today |
+| [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md) | Copy-paste-ready FastAPI routes the backend needs for the four read tools |
+| [`docs/DEMO_VIDEO_SCRIPT.md`](docs/DEMO_VIDEO_SCRIPT.md) | 3-minute Loom storyboard |
+| [`examples/workflows/`](examples/workflows/) | Six end-to-end conversational walkthroughs (overdue invoices, monthly summary, batch categorisation, customer briefing, Bewirtung booking, mixed-rate supermarket receipt) |
 
 ## Project Structure
 
 ```text
 buchhaltiq-mcp/
-├── README.md
-├── pyproject.toml
+├── README.md                    you are here
+├── pyproject.toml               FastMCP + httpx + pydantic + ruff + pytest
 ├── .env.example
 ├── src/buchhaltiq_mcp/
-│   ├── __init__.py
-│   ├── __main__.py            Entry point: `python -m buchhaltiq_mcp`.
-│   ├── server.py              FastMCP server factory.
-│   ├── config.py              Mode + API-key resolution from env.
-│   ├── models.py              Pydantic v2 domain models.
-│   ├── fixtures.py            JSON fixture loader for demo mode.
-│   ├── exceptions.py
-│   └── tools/
-│       ├── __init__.py        register_all(server, config)
-│       ├── invoices.py        list_invoices
-│       ├── customers.py       get_customer
-│       ├── belege.py          search_belege
-│       ├── reports.py         monthly_report
-│       ├── categorize.py      categorize_transaction
-│       ├── vat.py             extract_vat_from_receipt, map_tax_rate_to_bu_key
-│       ├── datev.py           validate_datev_account
-│       ├── bewirtung.py       apply_bewirtung_rule
-│       ├── split.py           split_mixed_tax_receipt
-│       └── accounting.py      resolve_account_assignment
-├── data/                      Demo fixtures (German SMB context).
-│   ├── customers.json
-│   ├── invoices.json
-│   └── belege.json
-├── tests/                     pytest suite.
-└── docs/                      (work in progress)
+│   ├── __main__.py              python -m buchhaltiq_mcp
+│   ├── server.py                FastMCP factory
+│   ├── config.py                mode + base-url + api-key from env
+│   ├── client.py                async httpx wrapper for the backend
+│   ├── _money.py                shared Decimal helpers (parse, round, split_gross)
+│   ├── models.py                Pydantic v2 domain
+│   ├── fixtures.py              JSON fixture loader for demo mode
+│   ├── exceptions.py            BuchhaltIQError, NotFoundError, ProductionNotImplementedError
+│   └── tools/                   one module per domain, each with a register() entry point
+│       ├── invoices.py          list_invoices
+│       ├── customers.py         get_customer
+│       ├── belege.py            search_belege
+│       ├── reports.py           monthly_report
+│       ├── categorize.py        categorize_transaction
+│       ├── vat.py               extract_vat_from_receipt, map_tax_rate_to_bu_key
+│       ├── datev.py             validate_datev_account
+│       ├── bewirtung.py         apply_bewirtung_rule
+│       ├── split.py             split_mixed_tax_receipt
+│       └── accounting.py        resolve_account_assignment
+├── data/
+│   ├── customers.json           5 demo SMBs
+│   ├── invoices.json            8 demo invoices across all lifecycle states
+│   ├── belege.json              6 demo receipts with German categories
+│   ├── datev_accounts.json      26 SKR03 / SKR04 account references
+│   └── categories.json          7 BuchhaltIQ accounting categories with SKR mapping
+├── tests/                       114 tests; respx-mocked production-mode integration tests
+├── docs/                        case study, architecture, privacy, production-setup, demo-script
+└── examples/workflows/          six conversational walkthroughs
 ```
 
 ## License
