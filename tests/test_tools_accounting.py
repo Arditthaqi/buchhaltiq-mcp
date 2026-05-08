@@ -267,6 +267,43 @@ async def test_production_calls_backend_and_maps_to_demo_shape(
 
 
 @respx.mock
+async def test_production_empty_backend_bu_key_uses_local_fallback(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/accounting/resolve"
+    respx.post(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "account": "3400",
+                "contra_account": "1200",
+                "bu_key": "",
+                "debit_credit": "S",
+                "tax_rate": 19,
+                "net_amount": "100.00",
+                "tax_amount": "19.00",
+                "gross_amount": "119.00",
+                "skr": "SKR03",
+                "category_id": "wareneinkauf_material",
+                "category_display": "Wareneinkauf Material",
+                "validation": {"is_valid": True, "errors": [], "warnings": [], "infos": []},
+            },
+        )
+    )
+
+    result = await _call(
+        server_prod,
+        category_id="wareneinkauf_material",
+        amount_gross="119.00",
+        payment_method="bank",
+        skr="SKR03",
+    )
+
+    assert result["bu_key"] == 9
+
+
+@respx.mock
 async def test_production_revenue_side_flips_debit_credit(
     server_prod: FastMCP, production_config: Config
 ) -> None:

@@ -169,10 +169,25 @@ BWA-style monthly profit-and-loss summary. Revenue is the sum of gross totals of
 }
 ```
 
+In **production mode** the response additionally carries an audit
+trail of the expense filter (the backend uses `posting_class` to
+exclude internal transfers, tax pre-payments, capital movements,
+and other non-P&L flows from the BWA total):
+
+```json
+{
+  "expense_excluded_total": "27255.46",
+  "expense_excluded_count": 13,
+  "expense_filter": "Only negative bank transactions with posting_class=pnl are counted."
+}
+```
+
+These fields are absent in demo mode because the demo fixtures do
+not carry `posting_class` metadata.
+
 ### Errors
 
 - `ValueError` — `year` outside `[2000, 2100]` or `month` outside `[1, 12]`.
-- `ProductionNotImplementedError` — production mode.
 
 ### Natural-language example
 

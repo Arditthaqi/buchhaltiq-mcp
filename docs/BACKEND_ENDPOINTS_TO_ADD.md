@@ -20,6 +20,7 @@ from typing import List, Optional
 from fastapi import HTTPException, Query
 
 from app.core.firebase_init import get_firestore_client
+from app.core.services.category_manager import category_manager
 ```
 
 (`datetime`, `Optional`, etc. may already be imported; deduplicate.)
@@ -38,6 +39,15 @@ from app.core.firebase_init import get_firestore_client
 # composite indexes required). Acceptable while invoice volume per user
 # stays small; revisit when a single user crosses ~1k invoices.
 # ============================================================================
+
+
+_UNCATEGORIZED_VALUES = {
+    "",
+    "nicht kategorisiert",
+    "uncategorized",
+    "unkategorisiert",
+    "unknown",
+}
 
 
 def _coerce_date(raw):
@@ -64,6 +74,49 @@ def _coerce_money(raw):
         return f"{Decimal(str(raw)):.2f}"
     except Exception:
         return None
+
+
+def _first_present(*values):
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def _posting_class_value(raw):
+    if raw is None:
+        return None
+    if hasattr(raw, "value"):
+        raw = raw.value
+    value = str(raw).strip().lower()
+    return value or None
+
+
+def _meaningful_category(raw):
+    if raw is None:
+        return None
+    value = str(raw).strip()
+    if value.lower() in _UNCATEGORIZED_VALUES:
+        return None
+    return value
+
+
+def _transaction_posting_class(data: dict):
+    direct = _posting_class_value(_first_present(data.get("posting_class"), data.get("postingClass")))
+    if direct:
+        return direct
+
+    category = _meaningful_category(
+        _first_present(data.get("categoryId"), data.get("category_id"), data.get("category"))
+    )
+    if not category:
+        return None
+
+    return _posting_class_value(category_manager.get_posting_class(category))
+
+
+def _is_pnl_transaction(data: dict) -> bool:
+    return _transaction_posting_class(data) == "pnl"
 
 
 def _project_invoice(doc_id: str, data: dict) -> dict:
@@ -247,8 +300,7 @@ async def monthly_report_for_user(
     month: int = Query(..., ge=1, le=12),
     current_user: dict = Depends(get_current_user),
 ):
-    """Aggregate revenue (paid + open + overdue + sent invoices) and expenses
-    (negative bank transactions) for the given month."""
+    """Aggregate revenue and P&L-relevant bank transaction expenses for the month."""
     db = get_firestore_client()
     if db is None:
         raise HTTPException(status_code=503, detail="Firestore unavailable")
@@ -256,8 +308,10 @@ async def monthly_report_for_user(
     uid = current_user["uid"]
     revenue = Decimal("0.00")
     expense = Decimal("0.00")
+    expense_excluded = Decimal("0.00")
     invoice_count = 0
     beleg_count = 0
+    excluded_beleg_count = 0
 
     revenue_statuses = {"paid", "open", "overdue", "sent"}
     invoices_ref = db.collection("users").document(uid).collection("invoices")
@@ -288,10 +342,14 @@ async def monthly_report_for_user(
         if amount_str is None:
             continue
         amount = Decimal(amount_str)
-        # Bank transactions are signed; negative outflows count as expenses.
         if amount < 0:
-            expense += -amount
-            beleg_count += 1
+            outflow = -amount
+            if _is_pnl_transaction(data):
+                expense += outflow
+                beleg_count += 1
+            else:
+                expense_excluded += outflow
+                excluded_beleg_count += 1
 
     return {
         "year": year,
@@ -302,6 +360,9 @@ async def monthly_report_for_user(
         "currency": "EUR",
         "invoice_count": invoice_count,
         "beleg_count": beleg_count,
+        "expense_excluded_total": f"{expense_excluded:.2f}",
+        "expense_excluded_count": excluded_beleg_count,
+        "expense_filter": "Only negative bank transactions with posting_class=pnl are counted.",
     }
 ```
 

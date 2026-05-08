@@ -76,6 +76,12 @@ def _flatten_validation_messages(items: list[dict[str, Any]]) -> list[str]:
     return flattened
 
 
+def _backend_bu_key(raw: Any, fallback: int) -> int:
+    if raw in (None, ""):
+        return fallback
+    return int(raw)
+
+
 def register(server: FastMCP, config: Config) -> None:
     """Register the accounting-resolve tool onto ``server``."""
     client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
@@ -244,7 +250,7 @@ def register(server: FastMCP, config: Config) -> None:
             "contra_account_title": contra_entry.title if contra_entry else None,
             "debit_account": debit,
             "credit_account": credit,
-            "bu_key": int(backend.get("bu_key", bu_key)),
+            "bu_key": _backend_bu_key(backend.get("bu_key"), bu_key),
             "bu_key_description": bu_description,
             "tax_rate": str(backend.get("tax_rate", rate)),
             "amount_gross": backend.get("gross_amount") or str(round_money(gross)),
