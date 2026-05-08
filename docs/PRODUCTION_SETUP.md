@@ -1,0 +1,101 @@
+# Production-Mode Setup
+
+This document explains how to point the MCP server at a running BuchhaltIQ backend so that the relevant tools call live API endpoints instead of fixture data. Today this enables **two tools** end-to-end against the real backend:
+
+- `validate_datev_account` — wraps `GET /api/accounting/validate/{skr}/{account}`
+- `resolve_account_assignment` — wraps `POST /api/accounting/resolve`
+
+The other nine tools either fall back to in-process logic (the tax-math helpers) or still raise `ProductionNotImplementedError` because their backend routes do not yet exist (`list_invoices`, `get_customer`, `search_belege`, `monthly_report`). See [Status](#status) below.
+
+## Prerequisites
+
+1. The BuchhaltIQ backend running and reachable from the machine that runs the MCP server. For local development this means `uvicorn` on `localhost:8080` (the default `PORT` in the backend's `app/main.py`).
+2. The MCP server installed in editable mode (`pip install -e ".[dev]"`).
+3. Claude Desktop (or any MCP client) configured to launch this server.
+
+The validate and resolve endpoints are currently **public** on the backend — no Authorization header required. The Authorization plumbing is already in place in `BuchhaltIQClient` for when read endpoints with Firebase-token auth land later.
+
+## Configuration
+
+The server is driven by three environment variables:
+
+| Variable | Required for production | Example | Notes |
+|---|---|---|---|
+| `BUCHHALTIQ_MCP_MODE` | yes | `production` | Default is `demo`. Set this to flip the wired tools to call the backend. |
+| `BUCHHALTIQ_API_BASE_URL` | yes | `http://localhost:8080` | No trailing slash. Strip the `/api/...` prefix — that lives in the client. |
+| `BUCHHALTIQ_API_KEY` | optional today | `<firebase id token>` | Currently unused by the two wired endpoints (they are public). Forward-looking placeholder for the read endpoints that will use Firebase ID tokens. |
+
+## Claude Desktop wiring
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "buchhaltiq": {
+      "command": "/absolute/path/to/.venv/bin/buchhaltiq-mcp",
+      "env": {
+        "BUCHHALTIQ_MCP_MODE": "production",
+        "BUCHHALTIQ_API_BASE_URL": "http://localhost:8080"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after the edit.
+
+## Smoke test (without Claude Desktop)
+
+The fastest way to confirm the wiring works is the MCP Inspector — it gives you a web UI that calls the tools directly:
+
+```bash
+# In one terminal: start the backend.
+cd /path/to/BuchhaltIQ-Backend
+uvicorn app.main:app --reload --port 8080
+
+# In another terminal: start the MCP server in production mode under Inspector.
+cd /path/to/buchhaltiq-mcp
+BUCHHALTIQ_MCP_MODE=production \
+BUCHHALTIQ_API_BASE_URL=http://localhost:8080 \
+  npx @modelcontextprotocol/inspector python -m buchhaltiq_mcp
+```
+
+Open the Inspector URL it prints, switch to the Tools tab, and run:
+
+- **`validate_datev_account`** with `skr=SKR03`, `account=4650` → expect `is_valid=true` and a `title` field carrying the DATEV-reference line.
+- **`resolve_account_assignment`** with `category_id=wareneinkauf_material`, `amount_gross="238.45"`, `payment_method=bank`, `skr=SKR03` → expect a complete booking pair (account, contra_account, bu_key, debit/credit, Decimal split).
+
+If those return successfully, the production wiring is correct.
+
+## Production-mode response shape
+
+The two wired tools return the **same top-level keys** in production as in demo mode, plus a few backend-only extras:
+
+- `validate_datev_account` (production) additionally returns `warnings` and the full `datev_references` list. `suggestions` is always empty in production because the backend has no fuzzy-match heuristic.
+- `resolve_account_assignment` (production) additionally returns `posting_class` and `bwa_relevant` from the backend. The `account_title` and `contra_account_title` keys are still resolved from the local `data/datev_accounts.json` fixture as a UX nicety since the backend does not return them.
+
+## Status
+
+| Tool | Production today | Notes |
+|---|---|---|
+| `extract_vat_from_receipt` | ✅ same as demo (pure math) | Math is decentralised in `_money.py`; no backend dependency. |
+| `map_tax_rate_to_bu_key` | ✅ same as demo (pure lookup) | Same. |
+| `apply_bewirtung_rule` | ✅ same as demo (pure math) | Same. |
+| `split_mixed_tax_receipt` | ✅ same as demo (pure math) | Same. |
+| `categorize_transaction` | ✅ same as demo (rule-based) | Rule engine has no backend; works identically in both modes. |
+| `validate_datev_account` | ✅ **wired to `GET /api/accounting/validate`** | Falls through to backend; returns enriched response. |
+| `resolve_account_assignment` | ✅ **wired to `POST /api/accounting/resolve`** | Falls through to backend; returns enriched response. |
+| `list_invoices` | ❌ stub (no admin route exists) | Backend needs `GET /api/invoices?...` with owner-scoped query. |
+| `get_customer` | ❌ stub (no single-customer GET) | Backend needs `GET /api/customers/{id}`. |
+| `search_belege` | ❌ stub (no search route) | Backend needs `GET /api/belege?q=...` (or similar over Transaktionen). |
+| `monthly_report` | ❌ stub (no aggregation route) | Either build `GET /api/reports/monthly` on the backend, or aggregate client-side once `list_invoices` and `search_belege` are wired. |
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `BuchhaltIQAPIError: 503 from .../validate/...: DATEV ref unavailable` | Backend cannot find its `data/datev_kontenrahmen` reference files. | Verify the backend's data directory and paths. |
+| `ToolError: Error executing tool ...: Connection refused` | Backend is not running on the configured base URL. | Start `uvicorn` or fix `BUCHHALTIQ_API_BASE_URL`. |
+| `BuchhaltIQAPIError: 400 from .../resolve: Unknown category_id` | Category exists in MCP `data/categories.json` but not in the backend's `category_definitions.json`. | Either add the category to the backend, or use a category the backend already knows. |
+| The two wired endpoints reject your token | The endpoints are public today; sending an Authorization header is harmless but unnecessary. | If you accidentally set a malformed token via `BUCHHALTIQ_API_KEY` and a private endpoint later rejects it, unset the variable. |

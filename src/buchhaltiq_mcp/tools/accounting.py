@@ -16,8 +16,9 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from buchhaltiq_mcp._money import parse_decimal, parse_tax_rate, round_money, split_gross
+from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.exceptions import NotFoundError, ProductionNotImplementedError
+from buchhaltiq_mcp.exceptions import NotFoundError
 from buchhaltiq_mcp.fixtures import load_categories, load_datev_accounts
 from buchhaltiq_mcp.models import AccountingCategory, DatevAccount
 
@@ -63,8 +64,21 @@ def _find_account(skr: str, account: str) -> DatevAccount | None:
     return None
 
 
+def _flatten_validation_messages(items: list[dict[str, Any]]) -> list[str]:
+    flattened: list[str] = []
+    for item in items:
+        msg = item.get("message")
+        code = item.get("code")
+        if msg and code:
+            flattened.append(f"[{code}] {msg}")
+        elif msg:
+            flattened.append(str(msg))
+    return flattened
+
+
 def register(server: FastMCP, config: Config) -> None:
     """Register the accounting-resolve tool onto ``server``."""
+    client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
 
     @server.tool()
     async def resolve_account_assignment(
@@ -193,8 +207,61 @@ def register(server: FastMCP, config: Config) -> None:
                 },
             }
 
-        raise ProductionNotImplementedError(
-            "resolve_account_assignment is not yet wired to the production "
-            "BuchhaltIQ API. Set BUCHHALTIQ_MCP_MODE=demo to use the "
-            "in-process implementation."
+        # Production mode: delegate to the backend's POST /api/accounting/resolve.
+        assert client is not None
+        backend = await client.resolve_account_assignment(
+            category_id=category.category_id,
+            tax_rate=int(rate),
+            payment_method=normalised_payment,
+            skr=normalised_skr,
+            gross_amount=str(round_money(gross)),
         )
+
+        # Map backend response to the demo response shape so callers can
+        # rely on the same keys regardless of mode. Fields the backend
+        # does not provide (account titles, payment_method echo, currency)
+        # are reconstructed from request inputs and the local fixture.
+        backend_account = backend.get("account", booking_account)
+        backend_contra = backend.get("contra_account", contra_account)
+        debit_credit = backend.get("debit_credit", "S")
+        if debit_credit == "S":
+            debit, credit = backend_account, backend_contra
+        else:
+            debit, credit = backend_contra, backend_account
+
+        booking_entry = _find_account(normalised_skr, backend_account)
+        contra_entry = _find_account(normalised_skr, backend_contra)
+        backend_validation = backend.get("validation") or {}
+
+        return {
+            "category_id": backend.get("category_id", category.category_id),
+            "category_title": backend.get("category_display", category.title),
+            "side": category.side,
+            "skr": backend.get("skr", normalised_skr),
+            "account": backend_account,
+            "account_title": booking_entry.title if booking_entry else None,
+            "contra_account": backend_contra,
+            "contra_account_title": contra_entry.title if contra_entry else None,
+            "debit_account": debit,
+            "credit_account": credit,
+            "bu_key": int(backend.get("bu_key", bu_key)),
+            "bu_key_description": bu_description,
+            "tax_rate": str(backend.get("tax_rate", rate)),
+            "amount_gross": backend.get("gross_amount") or str(round_money(gross)),
+            "amount_net": backend.get("net_amount") or str(_default_split(gross, rate)[0]),
+            "tax_amount": backend.get("tax_amount") or str(_default_split(gross, rate)[1]),
+            "payment_method": normalised_payment,
+            "currency": "EUR",
+            "validation": {
+                "is_valid": bool(backend_validation.get("is_valid", True)),
+                "errors": _flatten_validation_messages(backend_validation.get("errors") or []),
+                "warnings": _flatten_validation_messages(backend_validation.get("warnings") or []),
+            },
+            "posting_class": backend.get("posting_class"),
+            "bwa_relevant": backend.get("bwa_relevant"),
+        }
+
+
+def _default_split(gross: Decimal, rate: Decimal) -> tuple[str, str]:
+    net, tax = split_gross(gross, rate)
+    return str(net), str(tax)

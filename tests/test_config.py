@@ -23,11 +23,14 @@ def test_invalid_mode_raises(monkeypatch: pytest.MonkeyPatch) -> None:
         Config.from_env()
 
 
-def test_production_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_production_without_api_key_is_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The two endpoints wired today (validate + resolve) are public.
+    # api_key remains optional until a Firebase-token-scoped read endpoint lands.
     monkeypatch.setenv("BUCHHALTIQ_MCP_MODE", "production")
     monkeypatch.delenv("BUCHHALTIQ_API_KEY", raising=False)
-    with pytest.raises(ValueError, match="requires BUCHHALTIQ_API_KEY"):
-        Config.from_env()
+    cfg = Config.from_env()
+    assert cfg.mode is Mode.PRODUCTION
+    assert cfg.api_key is None
 
 
 def test_production_with_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
+import respx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -203,8 +205,116 @@ async def test_unsupported_tax_rate_raises(server_demo: FastMCP) -> None:
         )
 
 
-async def test_production_raises_clear_error(server_prod: FastMCP) -> None:
-    with pytest.raises(ToolError, match="not yet wired"):
+@respx.mock
+async def test_production_calls_backend_and_maps_to_demo_shape(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/accounting/resolve"
+    respx.post(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "account": "3400",
+                "contra_account": "1200",
+                "bu_key": "9",
+                "debit_credit": "S",
+                "tax_rate": 19,
+                "net_amount": "200.38",
+                "tax_amount": "38.07",
+                "gross_amount": "238.45",
+                "posting_class": "pnl",
+                "bwa_relevant": True,
+                "include_in_extf": True,
+                "skr": "SKR03",
+                "category_id": "wareneinkauf_material",
+                "category_display": "Wareneinkauf Material",
+                "resolution_source": "category_definitions",
+                "validation": {
+                    "is_valid": True,
+                    "errors": [],
+                    "warnings": [],
+                    "infos": [],
+                    "datev_references": [],
+                },
+            },
+        )
+    )
+
+    result = await _call(
+        server_prod,
+        category_id="wareneinkauf_material",
+        amount_gross="238.45",
+        payment_method="bank",
+        skr="SKR03",
+    )
+
+    # Backend payload mapped to MCP-shape keys.
+    assert result["account"] == "3400"
+    assert result["contra_account"] == "1200"
+    assert result["bu_key"] == 9  # cast str→int
+    assert result["debit_account"] == "3400"  # debit_credit "S" → account is debit
+    assert result["credit_account"] == "1200"
+    assert result["amount_net"] == "200.38"
+    assert result["tax_amount"] == "38.07"
+    assert result["amount_gross"] == "238.45"
+    assert result["category_title"] == "Wareneinkauf Material"
+    assert result["payment_method"] == "bank"  # echoed from request
+    # Account titles come from local fixture (backend does not provide).
+    assert result["account_title"] == "Wareneingang 19% Vorsteuer"
+    assert result["contra_account_title"] == "Bank"
+    assert result["validation"]["is_valid"] is True
+
+
+@respx.mock
+async def test_production_revenue_side_flips_debit_credit(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    # Backend says debit_credit="H" → contra is on debit side.
+    backend_url = f"{production_config.api_base_url}/api/accounting/resolve"
+    respx.post(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "account": "8400",
+                "contra_account": "1200",
+                "bu_key": "3",
+                "debit_credit": "H",
+                "tax_rate": 19,
+                "net_amount": "100.00",
+                "tax_amount": "19.00",
+                "gross_amount": "119.00",
+                "skr": "SKR03",
+                "category_id": "erloese_19",
+                "category_display": "Erlöse 19% USt",
+                "validation": {"is_valid": True, "errors": [], "warnings": [], "infos": []},
+            },
+        )
+    )
+
+    result = await _call(
+        server_prod,
+        category_id="erloese_19",
+        amount_gross="119.00",
+        payment_method="bank",
+        skr="SKR03",
+    )
+    assert result["debit_account"] == "1200"  # bank debited on revenue
+    assert result["credit_account"] == "8400"
+    assert result["bu_key"] == 3
+
+
+@respx.mock
+async def test_production_propagates_backend_400_as_tool_error(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/accounting/resolve"
+    respx.post(backend_url).mock(
+        return_value=httpx.Response(400, json={"detail": "Unknown category_id"})
+    )
+
+    with pytest.raises(ToolError, match="400"):
         await _call(
             server_prod,
             category_id="wareneinkauf_material",

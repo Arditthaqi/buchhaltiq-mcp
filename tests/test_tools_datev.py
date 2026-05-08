@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
+import respx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -96,6 +98,85 @@ async def test_validate_empty_account_raises(server_demo: FastMCP) -> None:
         await _call(server_demo, "validate_datev_account", skr="SKR03", account="   ")
 
 
-async def test_validate_production_raises_clear_error(server_prod: FastMCP) -> None:
-    with pytest.raises(ToolError, match="not yet wired"):
+@respx.mock
+async def test_validate_production_calls_backend_for_known_account(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/accounting/validate/SKR03/4650"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "skr": "SKR03",
+                "account": "4650",
+                "is_valid": True,
+                "errors": [],
+                "warnings": [],
+                "infos": [],
+                "datev_references": [
+                    {
+                        "reference_type": "kontenrahmen",
+                        "line_number": 4650,
+                        "title": "Bewirtungskosten (70% abziehbar)",
+                        "resolution_status": "exact",
+                        "section_id": None,
+                    }
+                ],
+            },
+        )
+    )
+
+    result = await _call(server_prod, "validate_datev_account", skr="SKR03", account="4650")
+
+    assert result["is_valid"] is True
+    assert result["skr"] == "SKR03"
+    assert result["account"] == "4650"
+    assert result["title"] == "Bewirtungskosten (70% abziehbar)"
+    assert result["errors"] == []
+    assert len(result["datev_references"]) == 1
+
+
+@respx.mock
+async def test_validate_production_flattens_backend_error_objects(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/accounting/validate/SKR03/9999"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "success": True,
+                "skr": "SKR03",
+                "account": "9999",
+                "is_valid": False,
+                "errors": [
+                    {
+                        "code": "ACCOUNT_NOT_FOUND",
+                        "message": "Konto 9999 nicht im SKR03-Kontenrahmen.",
+                        "details": None,
+                    }
+                ],
+                "warnings": [],
+                "infos": [],
+                "datev_references": [],
+            },
+        )
+    )
+
+    result = await _call(server_prod, "validate_datev_account", skr="SKR03", account="9999")
+
+    assert result["is_valid"] is False
+    assert "[ACCOUNT_NOT_FOUND]" in result["errors"][0]
+    assert "9999 nicht" in result["errors"][0]
+
+
+@respx.mock
+async def test_validate_production_propagates_backend_5xx_as_tool_error(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/accounting/validate/SKR03/1000"
+    respx.get(backend_url).mock(return_value=httpx.Response(503, text="DATEV ref unavailable"))
+
+    with pytest.raises(ToolError, match="503"):
         await _call(server_prod, "validate_datev_account", skr="SKR03", account="1000")

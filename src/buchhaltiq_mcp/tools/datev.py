@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.exceptions import ProductionNotImplementedError
 from buchhaltiq_mcp.fixtures import load_datev_accounts
 from buchhaltiq_mcp.models import DatevAccount
 
@@ -65,8 +65,22 @@ def _suggest_alternatives(skr: str, account: str, *, limit: int = 3) -> list[dic
     ]
 
 
+def _flatten_messages(items: list[dict[str, Any]]) -> list[str]:
+    """Reduce backend error/warning objects to flat human-readable strings."""
+    flattened: list[str] = []
+    for item in items:
+        msg = item.get("message")
+        code = item.get("code")
+        if msg and code:
+            flattened.append(f"[{code}] {msg}")
+        elif msg:
+            flattened.append(str(msg))
+    return flattened
+
+
 def register(server: FastMCP, config: Config) -> None:
     """Register the DATEV tools onto ``server``."""
+    client = BuchhaltIQClient(config) if config.mode is Mode.PRODUCTION else None
 
     @server.tool()
     async def validate_datev_account(skr: str, account: str) -> dict[str, Any]:
@@ -119,8 +133,25 @@ def register(server: FastMCP, config: Config) -> None:
                 "suggestions": _suggest_alternatives(normalised_skr, account_normalised),
             }
 
-        raise ProductionNotImplementedError(
-            "validate_datev_account is not yet wired to the production "
-            "BuchhaltIQ API. Set BUCHHALTIQ_MCP_MODE=demo to use the "
-            "shipped reference fixture."
+        # Production mode: delegate to the backend.
+        assert client is not None
+        backend = await client.validate_datev_account(
+            skr=normalised_skr, account=account_normalised
         )
+        # Pull the first datev_reference's title to the top level so the
+        # LLM can render a human-readable label without diving into the
+        # nested structure. Full datev_references is preserved for callers
+        # that want the audit trail.
+        refs = backend.get("datev_references") or []
+        title = refs[0].get("title") if refs else None
+        return {
+            "is_valid": bool(backend.get("is_valid")),
+            "skr": normalised_skr,
+            "account": account_normalised,
+            "title": title,
+            "type": None,  # backend does not classify accounts by type today
+            "errors": _flatten_messages(backend.get("errors") or []),
+            "warnings": _flatten_messages(backend.get("warnings") or []),
+            "suggestions": [],  # backend has no near-match heuristic
+            "datev_references": refs,
+        }

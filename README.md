@@ -27,6 +27,8 @@ For the system design behind the server — components, the demo↔production mo
 
 For an exhaustive parameter and response reference for every tool, see [`docs/tools-reference.md`](docs/tools-reference.md).
 
+For pointing the server at a running BuchhaltIQ backend (production mode setup, env vars, smoke test, status of which tools are wired today), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md).
+
 ## Status
 
 **Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:

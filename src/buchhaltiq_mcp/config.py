@@ -38,9 +38,9 @@ class Config:
             "BUCHHALTIQ_API_BASE_URL", "https://api.buchhaltiq.de/v1"
         ).rstrip("/")
 
-        if mode is Mode.PRODUCTION and not api_key:
-            raise ValueError(
-                "BUCHHALTIQ_MCP_MODE=production requires BUCHHALTIQ_API_KEY to be set."
-            )
+        # api_key is optional today: the validate / resolve endpoints
+        # are public on the backend. Read endpoints (list_invoices etc.)
+        # will require a Firebase ID token here when they land — at that
+        # point this validation can come back in tool-specific form.
 
         return cls(mode=mode, api_key=api_key, api_base_url=api_base_url)
