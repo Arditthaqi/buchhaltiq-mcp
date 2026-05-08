@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from buchhaltiq_mcp.tools import customers, invoices
+from buchhaltiq_mcp.tools import belege, customers, invoices
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -21,3 +21,4 @@ def register_all(server: FastMCP, config: Config) -> None:
     """Register every tool module against the given FastMCP server."""
     invoices.register(server, config)
     customers.register(server, config)
+    belege.register(server, config)
