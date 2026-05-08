@@ -21,6 +21,8 @@ Demo mode keeps the public repository risk-free: no real customer data ever flow
 
 For a detailed breakdown of what data flows where — and the GDPR/DSGVO obligations that apply once production mode is enabled — see [`docs/PRIVACY.md`](docs/PRIVACY.md).
 
+For end-to-end conversational examples (overdue invoices, monthly summaries, batch categorization, customer briefings) see [`examples/workflows/`](examples/workflows/).
+
 ## Status
 
 **Phase 1 — feature-complete in demo mode.** All five tools ship with demo-mode implementations and clear production stubs:
