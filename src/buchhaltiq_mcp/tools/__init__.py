@@ -17,6 +17,7 @@ from buchhaltiq_mcp.tools import (
     datev,
     invoices,
     reports,
+    split,
     vat,
 )
 
@@ -36,3 +37,4 @@ def register_all(server: FastMCP, config: Config) -> None:
     vat.register(server, config)
     datev.register(server, config)
     bewirtung.register(server, config)
+    split.register(server, config)
