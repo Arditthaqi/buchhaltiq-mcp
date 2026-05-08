@@ -37,6 +37,8 @@ For an exhaustive parameter and response reference for every tool, see [`docs/to
 - ✅ `search_belege` — full-text search over receipts
 - ✅ `monthly_report` — BWA-style monthly P&L summary
 - ✅ `categorize_transaction` — explainable rule-based German-accounting categorization
+- ✅ `extract_vat_from_receipt` — split gross into net + VAT (0/7/19%, Decimal precision)
+- ✅ `map_tax_rate_to_bu_key` — DATEV BU-key lookup for Vorsteuer / Umsatzsteuer
 - ✅ Pydantic models for invoices, customers, receipts, monthly reports
 - ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts)
 
@@ -98,7 +100,8 @@ buchhaltiq-mcp/
 │       ├── customers.py       get_customer
 │       ├── belege.py          search_belege
 │       ├── reports.py         monthly_report
-│       └── categorize.py      categorize_transaction
+│       ├── categorize.py      categorize_transaction
+│       └── vat.py             extract_vat_from_receipt, map_tax_rate_to_bu_key
 ├── data/                      Demo fixtures (German SMB context).
 │   ├── customers.json
 │   ├── invoices.json
