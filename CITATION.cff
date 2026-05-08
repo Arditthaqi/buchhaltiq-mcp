@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "buchhaltiq-mcp: MCP server for the BuchhaltIQ accounting product"
+authors:
+  - family-names: "Thaqi"
+    given-names: "Ardit"
+    affiliation: "Born — Theoretical Software"
+license: "MIT"
+keywords:
+  - "model context protocol"
+  - "mcp"
+  - "claude"
+  - "accounting"
+  - "buchhaltiq"

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "cust_001",
+    "name": "Restaurant Schinderhannes (Demo)",
+    "contact_email": "kontakt@schinderhannes-demo.example",
+    "city": "Mainz",
+    "country": "DE"
+  },
+  {
+    "id": "cust_002",
+    "name": "Café Donaublick (Demo)",
+    "contact_email": "buchhaltung@donaublick-demo.example",
+    "city": "Regensburg",
+    "country": "DE"
+  },
+  {
+    "id": "cust_003",
+    "name": "Pizzeria Da Mario (Demo)",
+    "contact_email": "info@damario-demo.example",
+    "city": "München",
+    "country": "DE"
+  },
+  {
+    "id": "cust_004",
+    "name": "Bäckerei Hofmann (Demo)",
+    "contact_email": "hofmann@baecker-demo.example",
+    "city": "Stuttgart",
+    "country": "DE"
+  },
+  {
+    "id": "cust_005",
+    "name": "Steuerkanzlei Albrecht & Partner (Demo)",
+    "contact_email": "kanzlei@albrecht-demo.example",
+    "city": "Frankfurt am Main",
+    "country": "DE"
+  }
+]

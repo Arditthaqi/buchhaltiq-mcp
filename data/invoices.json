@@ -1,0 +1,90 @@
+[
+  {
+    "id": "inv_2026_0001",
+    "customer_id": "cust_001",
+    "issue_date": "2026-01-08",
+    "due_date": "2026-02-07",
+    "status": "paid",
+    "total_net": "850.00",
+    "total_gross": "1011.50",
+    "currency": "EUR",
+    "description": "Catering Neujahrsempfang"
+  },
+  {
+    "id": "inv_2026_0002",
+    "customer_id": "cust_003",
+    "issue_date": "2026-01-15",
+    "due_date": "2026-02-14",
+    "status": "paid",
+    "total_net": "420.00",
+    "total_gross": "499.80",
+    "currency": "EUR",
+    "description": "Lieferung Tiefkühlpizza Großbestellung"
+  },
+  {
+    "id": "inv_2026_0003",
+    "customer_id": "cust_002",
+    "issue_date": "2026-02-03",
+    "due_date": "2026-03-05",
+    "status": "overdue",
+    "total_net": "1240.00",
+    "total_gross": "1475.60",
+    "currency": "EUR",
+    "description": "Beratungsleistung Q1"
+  },
+  {
+    "id": "inv_2026_0004",
+    "customer_id": "cust_004",
+    "issue_date": "2026-02-19",
+    "due_date": "2026-03-21",
+    "status": "paid",
+    "total_net": "315.50",
+    "total_gross": "375.45",
+    "currency": "EUR",
+    "description": "Wartung Backofen Filiale Süd"
+  },
+  {
+    "id": "inv_2026_0005",
+    "customer_id": "cust_005",
+    "issue_date": "2026-03-04",
+    "due_date": "2026-04-03",
+    "status": "open",
+    "total_net": "2950.00",
+    "total_gross": "3510.50",
+    "currency": "EUR",
+    "description": "Jahresabschluss-Prüfung 2025"
+  },
+  {
+    "id": "inv_2026_0006",
+    "customer_id": "cust_001",
+    "issue_date": "2026-03-22",
+    "due_date": "2026-04-21",
+    "status": "open",
+    "total_net": "680.00",
+    "total_gross": "809.20",
+    "currency": "EUR",
+    "description": "Catering Frühlingsfest"
+  },
+  {
+    "id": "inv_2026_0007",
+    "customer_id": "cust_003",
+    "issue_date": "2026-04-10",
+    "due_date": "2026-05-10",
+    "status": "open",
+    "total_net": "510.00",
+    "total_gross": "606.90",
+    "currency": "EUR",
+    "description": "Lieferung Pizzakartons"
+  },
+  {
+    "id": "inv_2026_0008",
+    "customer_id": "cust_002",
+    "issue_date": "2026-04-25",
+    "due_date": "2026-05-25",
+    "status": "draft",
+    "total_net": "1180.00",
+    "total_gross": "1404.20",
+    "currency": "EUR",
+    "description": "Beratungsleistung Q2"
+  }
+]

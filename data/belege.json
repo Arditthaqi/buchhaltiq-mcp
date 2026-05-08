@@ -1,0 +1,50 @@
+[
+  {
+    "id": "bel_001",
+    "issue_date": "2026-01-12",
+    "vendor": "METRO Cash & Carry",
+    "amount_gross": "238.45",
+    "category": "Wareneinkauf",
+    "description": "Großhandel: Mehl, Hefe, Tomatensauce, Pizzakäse für Pizzeria-Catering"
+  },
+  {
+    "id": "bel_002",
+    "issue_date": "2026-02-04",
+    "vendor": "Deutsche Post AG",
+    "amount_gross": "12.30",
+    "category": "Porto",
+    "description": "Briefporto Mahnungen Februar"
+  },
+  {
+    "id": "bel_003",
+    "issue_date": "2026-02-18",
+    "vendor": "Shell Tankstelle",
+    "amount_gross": "78.50",
+    "category": "Fahrzeugkosten",
+    "description": "Diesel Lieferfahrzeug Sprinter"
+  },
+  {
+    "id": "bel_004",
+    "issue_date": "2026-03-02",
+    "vendor": "Telekom Deutschland",
+    "amount_gross": "59.99",
+    "category": "Telekommunikation",
+    "description": "Geschäftsanschluss DSL + Festnetz März"
+  },
+  {
+    "id": "bel_005",
+    "issue_date": "2026-03-15",
+    "vendor": "OBI Baumarkt",
+    "amount_gross": "147.80",
+    "category": "Geringwertige Wirtschaftsgüter",
+    "description": "Werkzeug + Reinigungsmaterial Filiale Süd"
+  },
+  {
+    "id": "bel_006",
+    "issue_date": "2026-04-08",
+    "vendor": "DATEV eG",
+    "amount_gross": "89.00",
+    "category": "Buchhaltungssoftware",
+    "description": "DATEV-Schnittstelle Monatsgebühr"
+  }
+]
