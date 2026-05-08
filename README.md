@@ -25,15 +25,15 @@ Demo mode keeps the public repository risk-free: no real customer data ever flow
 
 - ✅ Mode-switching configuration (env-driven)
 - ✅ `list_invoices` (demo mode complete; production stub raises a clear error)
+- ✅ `get_customer` (demo mode complete; production stub raises a clear error)
 - ✅ Pydantic models for invoices, customers, receipts
 - ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts)
 
 Planned for Phase 1 completion:
 
-- `get_customer` — single-customer detail lookup
-- `categorize_transaction` — smart-categorization (BuchhaltIQ's open-sourced rules)
-- `monthly_report` — BWA-style monthly summary
 - `search_belege` — full-text search over receipts
+- `monthly_report` — BWA-style monthly summary
+- `categorize_transaction` — smart-categorization (BuchhaltIQ's open-sourced rules)
 
 ## Quick Start
 
@@ -87,7 +87,8 @@ buchhaltiq-mcp/
 │   ├── exceptions.py
 │   └── tools/
 │       ├── __init__.py        register_all(server, config)
-│       └── invoices.py        list_invoices
+│       ├── invoices.py        list_invoices
+│       └── customers.py       get_customer
 ├── data/                      Demo fixtures (German SMB context).
 │   ├── customers.json
 │   ├── invoices.json
