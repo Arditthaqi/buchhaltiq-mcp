@@ -12,7 +12,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from buchhaltiq_mcp.models import Beleg, Customer, Invoice
+from buchhaltiq_mcp.models import Beleg, Customer, DatevAccount, Invoice
 
 _REPO_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -49,3 +49,9 @@ def load_invoices() -> list[Invoice]:
 def load_belege() -> list[Beleg]:
     """Return all demo receipts."""
     return [Beleg.model_validate(row) for row in _load_raw("belege")]
+
+
+@lru_cache(maxsize=1)
+def load_datev_accounts() -> list[DatevAccount]:
+    """Return the SKR03 / SKR04 account reference table."""
+    return [DatevAccount.model_validate(row) for row in _load_raw("datev_accounts")]

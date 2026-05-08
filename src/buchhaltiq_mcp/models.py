@@ -76,3 +76,14 @@ class MonthlyReport(BaseModel):
     currency: str = "EUR"
     invoice_count: int
     beleg_count: int
+
+
+class DatevAccount(BaseModel):
+    """A single account in a DATEV chart of accounts (SKR03 or SKR04)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skr: str
+    account: str
+    title: str
+    type: str

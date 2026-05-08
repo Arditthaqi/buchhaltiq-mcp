@@ -9,7 +9,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from buchhaltiq_mcp.tools import belege, categorize, customers, invoices, reports, vat
+from buchhaltiq_mcp.tools import (
+    belege,
+    categorize,
+    customers,
+    datev,
+    invoices,
+    reports,
+    vat,
+)
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -25,3 +33,4 @@ def register_all(server: FastMCP, config: Config) -> None:
     reports.register(server, config)
     categorize.register(server, config)
     vat.register(server, config)
+    datev.register(server, config)
