@@ -8,6 +8,8 @@ Each workflow walks through one realistic Claude Desktop conversation and shows 
 | [02 — Monthly summary](02_monthly_summary.md) | "Give me a one-paragraph rundown of how March looked." | `monthly_report` |
 | [03 — Categorize a batch of new receipts](03_categorize_uncategorized_belege.md) | "I just exported these transactions from my bank — please tag them." | `categorize_transaction` (×n) |
 | [04 — Customer overview](04_customer_overview.md) | "Tell me everything you know about cust_002." | `get_customer`, `list_invoices` |
+| [05 — Bewirtung correctly booked](05_bewirtung_belegen.md) | "Restaurant receipt 238,45 €, how do I post this?" | `apply_bewirtung_rule`, `resolve_account_assignment`, `validate_datev_account` |
+| [06 — Mixed-rate supermarket receipt](06_mixed_supermarket_audit.md) | "METRO bill split between 7% food and 19% supplies — book both legs." | `split_mixed_tax_receipt`, `resolve_account_assignment` (×2) |
 
 ## How to read a workflow file
 
