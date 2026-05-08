@@ -61,3 +61,18 @@ class Beleg(BaseModel):
     amount_gross: Decimal
     category: str | None = None
     description: str = Field(default="", description="Free-text from the receipt")
+
+
+class MonthlyReport(BaseModel):
+    """A BWA-style monthly profit-and-loss summary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    year: int
+    month: int = Field(ge=1, le=12)
+    revenue_total: Decimal
+    expense_total: Decimal
+    profit: Decimal
+    currency: str = "EUR"
+    invoice_count: int
+    beleg_count: int

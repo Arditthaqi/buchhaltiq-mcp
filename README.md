@@ -29,12 +29,12 @@ For a detailed breakdown of what data flows where — and the GDPR/DSGVO obligat
 - ✅ `list_invoices` (demo mode complete; production stub raises a clear error)
 - ✅ `get_customer` (demo mode complete; production stub raises a clear error)
 - ✅ `search_belege` (demo mode complete; production stub raises a clear error)
-- ✅ Pydantic models for invoices, customers, receipts
+- ✅ `monthly_report` (demo mode complete; production stub raises a clear error)
+- ✅ Pydantic models for invoices, customers, receipts, monthly reports
 - ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts)
 
 Planned for Phase 1 completion:
 
-- `monthly_report` — BWA-style monthly summary
 - `categorize_transaction` — smart-categorization (BuchhaltIQ's open-sourced rules)
 
 ## Quick Start
@@ -91,7 +91,8 @@ buchhaltiq-mcp/
 │       ├── __init__.py        register_all(server, config)
 │       ├── invoices.py        list_invoices
 │       ├── customers.py       get_customer
-│       └── belege.py          search_belege
+│       ├── belege.py          search_belege
+│       └── reports.py         monthly_report
 ├── data/                      Demo fixtures (German SMB context).
 │   ├── customers.json
 │   ├── invoices.json
