@@ -40,6 +40,7 @@ For an exhaustive parameter and response reference for every tool, see [`docs/to
 - ✅ `extract_vat_from_receipt` — split gross into net + VAT (0/7/19%, Decimal precision)
 - ✅ `map_tax_rate_to_bu_key` — DATEV BU-key lookup for Vorsteuer / Umsatzsteuer
 - ✅ `validate_datev_account` — verify SKR03 / SKR04 account numbers + suggest near-matches
+- ✅ `apply_bewirtung_rule` — German 70/30 entertainment-deduction rule with full Vorsteuer recovery
 - ✅ Pydantic models for invoices, customers, receipts, monthly reports, DATEV accounts
 - ✅ German-SMB demo fixtures (5 customers, 8 invoices, 6 receipts, 26 SKR accounts)
 
@@ -103,7 +104,8 @@ buchhaltiq-mcp/
 │       ├── reports.py         monthly_report
 │       ├── categorize.py      categorize_transaction
 │       ├── vat.py             extract_vat_from_receipt, map_tax_rate_to_bu_key
-│       └── datev.py           validate_datev_account
+│       ├── datev.py           validate_datev_account
+│       └── bewirtung.py       apply_bewirtung_rule
 ├── data/                      Demo fixtures (German SMB context).
 │   ├── customers.json
 │   ├── invoices.json

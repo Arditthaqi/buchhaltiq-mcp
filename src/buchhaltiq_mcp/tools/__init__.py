@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from buchhaltiq_mcp.tools import (
     belege,
+    bewirtung,
     categorize,
     customers,
     datev,
@@ -34,3 +35,4 @@ def register_all(server: FastMCP, config: Config) -> None:
     categorize.register(server, config)
     vat.register(server, config)
     datev.register(server, config)
+    bewirtung.register(server, config)
