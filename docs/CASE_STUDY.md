@@ -81,7 +81,7 @@ End-to-end tested on May 8, 2026 against the developer's own restaurant data in 
 
 Three buckets, prioritised:
 
-1. **OCR pipeline.** Beleg-Foto → Claude Vision → automatic posting. The backend already has a Claude-Vision-based receipt analyzer; exposing it as `analyze_receipt_positions` would close the most painful end-user loop. This is the highest-leverage Phase 3 item.
+1. **Receipt-photo pipeline.** Beleg-Foto → vision-model parse → automatic posting. Closing the manual-data-entry loop is the highest-leverage end-user feature; not yet built. Whether to use Claude Vision, a self-hosted vision model, or a structured-OCR provider is an open trade-off captured in the architecture roadmap.
 2. **UStVA generator.** Monthly Umsatzsteuer-Voranmeldung is procedural and bureaucratic. A `generate_ustva(year, month)` tool would turn a 30-minute manual task into a one-sentence chat.
 3. **Multi-tenant rollout.** Currently single-user (the developer's own account). A real productised version requires an Auftragsverarbeitungsvertrag with Anthropic, an opt-in flow in the BuchhaltIQ frontend, and the Privacy Policy update documented in `docs/PRIVACY.md`.
 

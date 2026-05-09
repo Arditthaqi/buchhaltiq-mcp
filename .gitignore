@@ -34,3 +34,6 @@ env/
 # Local-only working files
 private/
 scratch/
+
+# Local dev scripts (may contain personal paths / emails)
+scripts/

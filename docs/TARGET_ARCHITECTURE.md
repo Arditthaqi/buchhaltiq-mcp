@@ -96,7 +96,7 @@ flowchart TB
 
 | Today (11 tools) | Target additions |
 |---|---|
-| `list_invoices`, `get_customer`, `search_belege`, `monthly_report`, `categorize_transaction`, `extract_vat_from_receipt`, `map_tax_rate_to_bu_key`, `validate_datev_account`, `apply_bewirtung_rule`, `split_mixed_tax_receipt`, `resolve_account_assignment` | `analyze_receipt_positions` (Vision OCR) |
+| `list_invoices`, `get_customer`, `search_belege`, `monthly_report`, `categorize_transaction`, `extract_vat_from_receipt`, `map_tax_rate_to_bu_key`, `validate_datev_account`, `apply_bewirtung_rule`, `split_mixed_tax_receipt`, `resolve_account_assignment` | `analyze_receipt_positions` (receipt-photo parsing — vision-model TBD) |
 | | `extract_creditor_data` (vendor master from receipt photo) |
 | | `generate_ustva` (monthly Umsatzsteuer-Voranmeldung) |
 | | `detect_reverse_charge` (auto-flag §13b for EU services) |
@@ -106,7 +106,7 @@ flowchart TB
 
 **Migration path**
 
-For each new tool: same seven-step pattern from [`architecture.md`](architecture.md). The backend services for `analyze_receipt_positions` and `extract_creditor_data` already exist (`receipt_analyzer.py` with Claude Vision); only the route + MCP wiring is missing. UStVA, reverse-charge, GoBD checks would need backend services as well.
+For each new tool: same seven-step pattern from [`architecture.md`](architecture.md). None of these backend services exist yet — receipt-photo parsing, UStVA generation, reverse-charge detection, GoBD compliance checks all need to be designed and built in BuchhaltIQ before MCP wrapping. The choice between Claude Vision, a self-hosted vision model, or a structured-OCR provider for receipt-photo parsing is itself an open architecture decision.
 
 **Priority order**
 
