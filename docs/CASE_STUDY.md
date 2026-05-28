@@ -44,7 +44,7 @@ return await client.method(...)
 
 The demo path keeps the public repo GDPR-safe — no real customer data flows through tests, CI, or the published workflows. The production path is what an actual operator runs against their own workspace.
 
-The companion document `docs/BACKEND_ENDPOINTS_TO_ADD.md` is the **contract**: it specifies exactly which FastAPI routes the backend must expose for the four read tools to function. The MCP repo and the backend repo stay decoupled — the MCP repo owns its expectations, the backend repo owns the implementation.
+The companion document `docs/BACKEND_ENDPOINTS_TO_ADD.md` keeps the legacy read-endpoint contract documented, while the newer BuchhaltIQ-aware month overview now has its own backend route under `/api/mcp/month-overview/{period_key}`. The MCP repo and the backend repo stay decoupled — the MCP repo owns its expectations, the backend repo owns the implementation.
 
 ---
 
@@ -70,10 +70,11 @@ End-to-end tested on May 8, 2026 against the developer's own restaurant data in 
 |---|---|
 | `list_invoices` | 1 paid invoice for April: Hotel Amerika, RE-2026-001, 1.281,00 € |
 | `monthly_report(2026, 4)` | 1.281€ revenue, 26.252€ P&L expenses, -24.971€ profit, with 27.255€ across 13 transactions excluded as non-P&L |
+| `accounting_month_overview("2026-04")` | BuchhaltIQ-aware split across Tagesberichte, invoice payments, standalone income, P&L expenses, VAT estimate, and DATEV readiness |
 | `search_belege("METRO")` | 5 real METRO transactions across 3 weeks, all auto-categorised "Wareneinkauf & Material" |
 | `resolve_account_assignment("wareneinkauf_material", "238.45")` | SKR03 3400/1200, BU-key 9, net 200.38€, tax 38.07€, validation valid |
 
-114 unit tests on the MCP side (with `respx` for backend mocking), `ruff` clean. Demo-mode invariants verified separately so the public repo's CI does not depend on a backend running.
+126 unit tests on the MCP side (with `respx` for backend mocking), `ruff` clean. Demo-mode invariants verified separately so the public repo's CI does not depend on a backend running.
 
 ---
 
@@ -91,8 +92,8 @@ Three buckets, prioritised:
 
 - **21 commits** on `main`, all Conventional-Commits style
 - **Python 3.11 / 3.12 / 3.13** verified in CI
-- **11 tools** across 9 modules under `src/buchhaltiq_mcp/tools/`
-- **114 tests**, including respx-mocked backend integration tests for every wired tool
+- **15 tools** across 10 modules under `src/buchhaltiq_mcp/tools/`
+- **126 tests**, including respx-mocked backend integration tests for every wired tool
 - **6 architecture / privacy / reference docs** (`PRIVACY.md`, `architecture.md`, `tools-reference.md`, `PRODUCTION_SETUP.md`, `BACKEND_ENDPOINTS_TO_ADD.md`, `CASE_STUDY.md` — this file)
 - **6 conversational workflow walkthroughs** under `examples/workflows/`, each showing one realistic Claude-Desktop conversation with the underlying tool calls
 - **MIT licensed**, MCP Inspector compatible

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "emp_001",
+    "firstName": "Anna",
+    "lastName": "Mueller",
+    "status": "active",
+    "employmentType": "minijob",
+    "hourlyRate": 15.0,
+    "weeklyHours": 12.0,
+    "datevPersonnelNumber": 101,
+    "entryDate": "2025-11-01",
+    "email": "anna.mueller@example.invalid",
+    "phone": "+49 30 000000"
+  },
+  {
+    "id": "emp_002",
+    "firstName": "Leo",
+    "lastName": "Schneider",
+    "status": "active",
+    "employmentType": "parttime",
+    "hourlyRate": 17.5,
+    "weeklyHours": 20.0,
+    "datevPersonnelNumber": 102,
+    "entryDate": "2026-01-15"
+  },
+  {
+    "id": "emp_003",
+    "firstName": "Maria",
+    "lastName": "Klein",
+    "status": "inactive",
+    "employmentType": "fulltime",
+    "hourlyRate": 22.0,
+    "weeklyHours": 40.0,
+    "datevPersonnelNumber": 103,
+    "entryDate": "2024-08-01",
+    "exitDate": "2026-03-31"
+  }
+]

@@ -16,6 +16,7 @@ from buchhaltiq_mcp.tools import (
     categorize,
     customers,
     datev,
+    hr,
     invoices,
     reports,
     split,
@@ -40,3 +41,4 @@ def register_all(server: FastMCP, config: Config) -> None:
     bewirtung.register(server, config)
     split.register(server, config)
     accounting.register(server, config)
+    hr.register(server, config)

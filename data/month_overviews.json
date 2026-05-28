@@ -1,0 +1,91 @@
+[
+  {
+    "period_key": "2026-04",
+    "year": 2026,
+    "month": 4,
+    "currency": "EUR",
+    "income": {
+      "total": "1288.00",
+      "pos_revenue": "1000.00",
+      "invoice_revenue": "188.00",
+      "standalone_income": "100.00",
+      "daily_report_count": 1,
+      "invoice_payment_count": 2,
+      "standalone_income_count": 1,
+      "excluded_linked_income_count": 1,
+      "excluded_operational_bank_income_count": 1,
+      "pos_payment_breakdown": {
+        "cash": "400.00",
+        "card": "500.00",
+        "transfer": "0.00",
+        "invoice": "100.00"
+      }
+    },
+    "expenses": {
+      "gross_expenses": "119.00",
+      "refunds": "19.00",
+      "net_expenses": "100.00",
+      "transaction_count": 1,
+      "refund_count": 1,
+      "excluded_count": 1,
+      "excluded_total": "25.00",
+      "by_category": [
+        {
+          "category_id": "wareneinkauf_material",
+          "display_name": "Wareneinkauf & Material",
+          "gross": "119.00",
+          "refunds": "19.00",
+          "net": "100.00",
+          "count": 2
+        }
+      ]
+    },
+    "profit": "1188.00",
+    "vat": {
+      "output_tax": "177.38",
+      "input_tax": "15.97",
+      "net_vat_due_estimate": "161.41",
+      "basis": "daily report splits, invoice totals/items where available, and transaction tax rates/defaults",
+      "by_rate": [
+        {
+          "tax_rate": 7,
+          "gross_income": "300.00",
+          "output_tax": "19.63",
+          "gross_expense": "0.00",
+          "input_tax": "0.00"
+        },
+        {
+          "tax_rate": 19,
+          "gross_income": "988.00",
+          "output_tax": "157.75",
+          "gross_expense": "100.00",
+          "input_tax": "15.97"
+        }
+      ]
+    },
+    "readiness": {
+      "missing_receipt_count": 1,
+      "uncategorized_transaction_count": 0,
+      "receipt_count": 0,
+      "month_locked": false,
+      "datev_export_status": "not_started",
+      "can_prepare_datev": false
+    },
+    "source_counts": {
+      "bank_transactions": 6,
+      "daily_reports": 1,
+      "invoice_payments": 2,
+      "receipts": 0
+    },
+    "warnings": [
+      "Some P&L transactions still miss a required receipt.",
+      "Operational bank income transactions were not summed directly because daily reports and invoice payments are authoritative."
+    ],
+    "methodology": [
+      "POS revenue is read from dailyReports.totalRevenue.",
+      "Invoice revenue is read from invoice payments by paidAt and excludes origin=pos.",
+      "Standalone income uses exportable P&L income categories such as sonstige_einnahmen.",
+      "Expenses use P&L expense categories; neutral, tax, private, clearing and balance-sheet items are excluded."
+    ]
+  }
+]

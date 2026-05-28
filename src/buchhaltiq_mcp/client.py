@@ -26,6 +26,13 @@ _INVOICES_LIST_PATH = "/api/user-invoices/list"
 _CUSTOMERS_LIST_PATH = "/api/user-invoices/customers"
 _TRANSACTIONS_SEARCH_PATH = "/api/user-invoices/transactions"
 _MONTHLY_REPORT_PATH = "/api/user-invoices/monthly-report"
+_ACCOUNTING_MONTH_OVERVIEW_PATH = "/api/mcp/month-overview/{period_key}"
+_HR_EMPLOYEES_PATH = "/api/hr/employees"
+_HR_EMPLOYEE_PATH = "/api/hr/employees/{employee_id}"
+_HR_TIME_ENTRIES_MONTH_PATH = "/api/hr/time-entries/month/{period_key}"
+_HR_TIME_ENTRIES_EMPLOYEE_PATH = "/api/hr/time-entries/employee/{employee_id}"
+_HR_MONTH_STATUS_PATH = "/api/hr/months/{period_key}/status"
+_HR_ABSENCES_MONTH_PATH = "/api/hr/absences/month/{period_key}"
 
 
 class BuchhaltIQAPIError(Exception):
@@ -165,3 +172,64 @@ class BuchhaltIQClient:
     async def monthly_report(self, *, year: int, month: int) -> dict[str, Any]:
         """Wrap GET /api/user-invoices/monthly-report. Returns the aggregate dict."""
         return await self._get(_MONTHLY_REPORT_PATH, params={"year": year, "month": month})
+
+    async def accounting_month_overview(self, *, period_key: str) -> dict[str, Any]:
+        """Wrap GET /api/mcp/month-overview/{period_key}."""
+        return await self._get(_ACCOUNTING_MONTH_OVERVIEW_PATH.format(period_key=period_key))
+
+    async def list_employees(
+        self,
+        *,
+        status: str | None = None,
+        employment_type: str | None = None,
+    ) -> dict[str, Any]:
+        """Wrap GET /api/hr/employees. Returns ``{employees, count}``."""
+        return await self._get(
+            _HR_EMPLOYEES_PATH,
+            params={"status": status, "employmentType": employment_type},
+        )
+
+    async def get_employee(self, *, employee_id: str) -> dict[str, Any]:
+        """Wrap GET /api/hr/employees/{employee_id}."""
+        return await self._get(_HR_EMPLOYEE_PATH.format(employee_id=employee_id))
+
+    async def hr_time_entries_for_month(
+        self,
+        *,
+        period_key: str,
+        employee_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Wrap GET /api/hr/time-entries/month/{period_key}."""
+        return await self._get(
+            _HR_TIME_ENTRIES_MONTH_PATH.format(period_key=period_key),
+            params={"employeeId": employee_id},
+        )
+
+    async def hr_time_entries_for_employee(
+        self,
+        *,
+        employee_id: str,
+        period_key: str | None = None,
+        limit: int = 500,
+    ) -> dict[str, Any]:
+        """Wrap GET /api/hr/time-entries/employee/{employee_id}."""
+        return await self._get(
+            _HR_TIME_ENTRIES_EMPLOYEE_PATH.format(employee_id=employee_id),
+            params={"periodKey": period_key, "limit": limit},
+        )
+
+    async def hr_month_status(self, *, period_key: str) -> dict[str, Any]:
+        """Wrap GET /api/hr/months/{period_key}/status."""
+        return await self._get(_HR_MONTH_STATUS_PATH.format(period_key=period_key))
+
+    async def hr_absences_for_month(
+        self,
+        *,
+        period_key: str,
+        employee_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Wrap GET /api/hr/absences/month/{period_key}."""
+        return await self._get(
+            _HR_ABSENCES_MONTH_PATH.format(period_key=period_key),
+            params={"employeeId": employee_id},
+        )

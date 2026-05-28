@@ -1,6 +1,8 @@
 # Backend Endpoints To Add
 
-This is a copy-paste-ready FastAPI specification for the four read endpoints the MCP server expects to find on the BuchhaltIQ backend. Add them once, restart the backend, and the four currently-stubbed MCP tools (`list_invoices`, `get_customer`, `search_belege`, `monthly_report`) become live.
+This is the legacy copy-paste-ready FastAPI specification for the original four read endpoints the MCP server expected in `app/modules/user_invoices/routes.py`: `list_invoices`, `get_customer`, `search_belege`, and `monthly_report`.
+
+The newer product-aware month feature uses a dedicated backend route instead: `GET /api/mcp/month-overview/{period_key}`, implemented in `app/modules/mcp/routes.py` with the accounting calculator in `app/modules/mcp/month_overview_service.py`.
 
 > **Rationale for putting this in the MCP repo, not the backend repo:** the cross-repo edit is intentionally scoped out — the MCP repo owns its expectations of the backend, and the backend repo owns the implementation. This file is the contract.
 

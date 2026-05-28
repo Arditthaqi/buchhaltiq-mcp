@@ -1,11 +1,12 @@
 # Production-Mode Setup
 
-This document explains how to point the MCP server at a running BuchhaltIQ backend so that the relevant tools call live API endpoints instead of fixture data. Today this enables **two tools** end-to-end against the real backend:
+This document explains how to point the MCP server at a running BuchhaltIQ backend so that the relevant tools call live API endpoints instead of fixture data. Today this enables the backend-backed read, HR, and accounting tools plus the public accounting-resolution endpoints.
 
 - `validate_datev_account` — wraps `GET /api/accounting/validate/{skr}/{account}`
 - `resolve_account_assignment` — wraps `POST /api/accounting/resolve`
+- `accounting_month_overview` — wraps `GET /api/mcp/month-overview/{period_key}`
 
-The other nine tools either fall back to in-process logic (the tax-math helpers) or still raise `ProductionNotImplementedError` because their backend routes do not yet exist (`list_invoices`, `get_customer`, `search_belege`, `monthly_report`). See [Status](#status) below.
+Pure tax-math helpers still run locally in both modes. See [Status](#status) below.
 
 ## Prerequisites
 
@@ -23,7 +24,7 @@ The server is driven by three environment variables:
 |---|---|---|---|
 | `BUCHHALTIQ_MCP_MODE` | yes | `production` | Default is `demo`. Set this to flip the wired tools to call the backend. |
 | `BUCHHALTIQ_API_BASE_URL` | yes | `http://localhost:8080` | No trailing slash. Strip the `/api/...` prefix — that lives in the client. |
-| `BUCHHALTIQ_API_KEY` | **required** for the four read endpoints | `<firebase id token>` | A Firebase ID token belonging to the operator's BuchhaltIQ account. Tokens expire after 1 hour — for repeated testing, refresh manually. The validate / resolve endpoints stay public, so this is only required for `list_invoices`, `get_customer`, `search_belege`, `monthly_report`. |
+| `BUCHHALTIQ_API_KEY` | required for private read endpoints | `<firebase id token>` | A Firebase ID token belonging to the operator's BuchhaltIQ account. Tokens expire after 1 hour — for repeated testing, refresh manually. The validate / resolve endpoints stay public. |
 
 ## Getting a Firebase ID token for testing
 
@@ -83,15 +84,17 @@ Open the Inspector URL it prints, switch to the Tools tab, and run:
 
 - **`validate_datev_account`** with `skr=SKR03`, `account=4650` → expect `is_valid=true` and a `title` field carrying the DATEV-reference line.
 - **`resolve_account_assignment`** with `category_id=wareneinkauf_material`, `amount_gross="238.45"`, `payment_method=bank`, `skr=SKR03` → expect a complete booking pair (account, contra_account, bu_key, debit/credit, Decimal split).
+- **`accounting_month_overview`** with `period_key=2026-04` → expect income split by daily reports, invoice payments, standalone income, P&L expenses, VAT, readiness, and warnings.
 
 If those return successfully, the production wiring is correct.
 
 ## Production-mode response shape
 
-The two wired tools return the **same top-level keys** in production as in demo mode, plus a few backend-only extras:
+Wired tools return the **same top-level keys** in production as in demo mode, plus a few backend-only extras:
 
 - `validate_datev_account` (production) additionally returns `warnings` and the full `datev_references` list. `suggestions` is always empty in production because the backend has no fuzzy-match heuristic.
 - `resolve_account_assignment` (production) additionally returns `posting_class` and `bwa_relevant` from the backend. The `account_title` and `contra_account_title` keys are still resolved from the local `data/datev_accounts.json` fixture as a UX nicety since the backend does not return them.
+- `accounting_month_overview` (production) is backend-owned and may include richer warnings as the backend learns more source checks; the core `income`, `expenses`, `vat`, `readiness`, and `source_counts` keys stay stable.
 
 ## Status
 
@@ -108,6 +111,10 @@ The two wired tools return the **same top-level keys** in production as in demo 
 | `get_customer` | ✅ **wired to `GET /api/user-invoices/customers`** | Same; aggregate fetched, filtered client-side by id. |
 | `search_belege` | ✅ **wired to `GET /api/user-invoices/transactions`** | Same; bank transactions projected as Belege. |
 | `monthly_report` | ✅ **wired to `GET /api/user-invoices/monthly-report`** | Same; aggregation runs on the backend. |
+| `accounting_month_overview` | ✅ **wired to `GET /api/mcp/month-overview/{period_key}`** | Uses BuchhaltIQ source semantics: daily reports, invoice payments, standalone income, P&L expenses. |
+| `list_employees` | ✅ **wired to `/api/hr/employees`** | HR read endpoint with minimized fields. |
+| `get_employee_work_summary` | ✅ **wired to HR month/employee endpoints** | Aggregation runs in MCP from backend HR reads. |
+| `hr_month_overview` | ✅ **wired to HR month endpoints** | Aggregation runs in MCP from backend HR reads. |
 
 ## Troubleshooting
 

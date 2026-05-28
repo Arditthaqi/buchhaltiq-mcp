@@ -1,0 +1,36 @@
+[
+  {
+    "id": "absence_001",
+    "employeeId": "emp_001",
+    "type": "vacation",
+    "status": "approved",
+    "startDate": "2026-04-10",
+    "endDate": "2026-04-10",
+    "isHalfDay": true,
+    "periodKey": "2026-04",
+    "affectedPeriodKeys": ["2026-04"]
+  },
+  {
+    "id": "absence_002",
+    "employeeId": "emp_002",
+    "type": "sick",
+    "status": "approved",
+    "startDate": "2026-04-15",
+    "endDate": "2026-04-16",
+    "isHalfDay": false,
+    "periodKey": "2026-04",
+    "affectedPeriodKeys": ["2026-04"],
+    "eauStatus": "received"
+  },
+  {
+    "id": "absence_003",
+    "employeeId": "emp_001",
+    "type": "vacation",
+    "status": "approved",
+    "startDate": "2026-03-07",
+    "endDate": "2026-03-07",
+    "isHalfDay": false,
+    "periodKey": "2026-03",
+    "affectedPeriodKeys": ["2026-03"]
+  }
+]

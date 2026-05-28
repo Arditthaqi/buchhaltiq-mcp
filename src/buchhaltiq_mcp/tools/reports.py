@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from buchhaltiq_mcp.client import BuchhaltIQClient
 from buchhaltiq_mcp.config import Mode
-from buchhaltiq_mcp.fixtures import load_belege, load_invoices
+from buchhaltiq_mcp.fixtures import load_belege, load_invoices, load_month_overviews
 from buchhaltiq_mcp.models import InvoiceStatus, MonthlyReport
 
 if TYPE_CHECKING:
@@ -41,6 +41,95 @@ def _build_demo_monthly_report(year: int, month: int) -> MonthlyReport:
         invoice_count=len(invoices),
         beleg_count=len(belege),
     )
+
+
+def _validate_period_key(period_key: str) -> tuple[int, int]:
+    value = (period_key or "").strip()
+    parts = value.split("-")
+    if len(parts) != 2 or len(parts[0]) != 4 or len(parts[1]) != 2:
+        raise ValueError("period_key must use YYYY-MM format.")
+    try:
+        year = int(parts[0])
+        month = int(parts[1])
+    except ValueError as exc:
+        raise ValueError("period_key must use YYYY-MM format.") from exc
+    if not (2000 <= year <= 2100) or not (1 <= month <= 12):
+        raise ValueError("period_key must use YYYY-MM format.")
+    return year, month
+
+
+def _empty_demo_month_overview(period_key: str, year: int, month: int) -> dict[str, Any]:
+    return {
+        "period_key": period_key,
+        "year": year,
+        "month": month,
+        "currency": "EUR",
+        "income": {
+            "total": "0.00",
+            "pos_revenue": "0.00",
+            "invoice_revenue": "0.00",
+            "standalone_income": "0.00",
+            "daily_report_count": 0,
+            "invoice_payment_count": 0,
+            "standalone_income_count": 0,
+            "excluded_linked_income_count": 0,
+            "excluded_operational_bank_income_count": 0,
+            "pos_payment_breakdown": {
+                "cash": "0.00",
+                "card": "0.00",
+                "transfer": "0.00",
+                "invoice": "0.00",
+            },
+        },
+        "expenses": {
+            "gross_expenses": "0.00",
+            "refunds": "0.00",
+            "net_expenses": "0.00",
+            "transaction_count": 0,
+            "refund_count": 0,
+            "excluded_count": 0,
+            "excluded_total": "0.00",
+            "by_category": [],
+        },
+        "profit": "0.00",
+        "vat": {
+            "output_tax": "0.00",
+            "input_tax": "0.00",
+            "net_vat_due_estimate": "0.00",
+            "by_rate": [],
+            "basis": "demo fixture",
+        },
+        "readiness": {
+            "missing_receipt_count": 0,
+            "uncategorized_transaction_count": 0,
+            "receipt_count": 0,
+            "month_locked": False,
+            "datev_export_status": None,
+            "can_prepare_datev": True,
+        },
+        "source_counts": {
+            "bank_transactions": 0,
+            "daily_reports": 0,
+            "invoice_payments": 0,
+            "receipts": 0,
+        },
+        "warnings": ["No demo accounting data exists for this period."],
+        "methodology": [
+            "POS revenue is read from dailyReports.totalRevenue.",
+            "Invoice revenue is read from invoice payments by paidAt and excludes origin=pos.",
+            "Standalone income uses exportable P&L income categories such as sonstige_einnahmen.",
+            "Expenses use P&L expense categories; neutral, tax, private, clearing and "
+            "balance-sheet items are excluded.",
+        ],
+    }
+
+
+def _build_demo_accounting_month_overview(period_key: str) -> dict[str, Any]:
+    year, month = _validate_period_key(period_key)
+    for overview in load_month_overviews():
+        if overview.get("period_key") == period_key:
+            return overview
+    return _empty_demo_month_overview(period_key, year, month)
 
 
 def register(server: FastMCP, config: Config) -> None:
@@ -84,3 +173,33 @@ def register(server: FastMCP, config: Config) -> None:
         # Production mode: delegate to the backend's aggregation endpoint.
         assert client is not None
         return await client.monthly_report(year=year, month=month)
+
+    @server.tool()
+    async def accounting_month_overview(period_key: str) -> dict[str, Any]:
+        """Build the BuchhaltIQ accounting month overview from authoritative sources.
+
+        This is the richer successor to ``monthly_report`` for product-aware
+        accounting questions. It mirrors BuchhaltIQ's frontend/export logic:
+        POS revenue comes from ``dailyReports.totalRevenue``; invoice revenue
+        comes from actual payments by ``paidAt`` and excludes ``origin=pos``;
+        standalone income is limited to exportable P&L income categories; and
+        expenses are grouped by P&L expense category while neutral, tax,
+        private, clearing, and balance-sheet movements are excluded.
+
+        Args:
+            period_key: Month in ``YYYY-MM`` format.
+
+        Returns:
+            A dictionary with income, expenses, VAT, readiness, source counts,
+            warnings, and methodology. Money values are decimal strings.
+
+        Raises:
+            ValueError: If ``period_key`` is not in ``YYYY-MM`` format.
+        """
+        _validate_period_key(period_key)
+
+        if config.mode is Mode.DEMO:
+            return _build_demo_accounting_month_overview(period_key)
+
+        assert client is not None
+        return await client.accounting_month_overview(period_key=period_key)
