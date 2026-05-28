@@ -20,6 +20,12 @@ The server ships in **two modes** that share one tool definition: a `demo` mode 
 
 Demo mode keeps the public repository GDPR-safe — no real customer data flows through the test suite, GitHub Actions, or the example workflows. Production mode is a single env-var flip away.
 
+> **Production note:** demo mode works from this repository alone. Production mode
+> requires the BuchhaltIQ backend to expose the corresponding routes. In
+> particular, `accounting_month_overview` needs
+> `GET /api/mcp/month-overview/{period_key}` to be deployed in the backend;
+> otherwise the MCP tool will correctly fail with the backend's HTTP error.
+
 ## The fifteen tools
 
 | | Tool | What it does |
@@ -72,7 +78,7 @@ To wire it into Claude Desktop, drop this into `~/Library/Application Support/Cl
 
 Restart Claude Desktop and ask: *"Zeig mir die überfälligen Rechnungen aus Q1 2026."*
 
-For production mode (live backend), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md). For the four FastAPI routes the backend must add to enable the read tools, see [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md).
+For production mode (live backend), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md). For the legacy read-route contract and the newer month-overview backend requirement, see [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md).
 
 ## Documentation map
 
@@ -84,7 +90,7 @@ For production mode (live backend), see [`docs/PRODUCTION_SETUP.md`](docs/PRODUC
 | [`docs/tools-reference.md`](docs/tools-reference.md) | Exhaustive parameter / response / error reference for every tool |
 | [`docs/PRIVACY.md`](docs/PRIVACY.md) | Data flow + GDPR / DSGVO obligations table |
 | [`docs/PRODUCTION_SETUP.md`](docs/PRODUCTION_SETUP.md) | Env vars, smoke test, status of which tools are wired today |
-| [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md) | Copy-paste-ready FastAPI routes the backend needs for the four read tools |
+| [`docs/BACKEND_ENDPOINTS_TO_ADD.md`](docs/BACKEND_ENDPOINTS_TO_ADD.md) | Legacy read-route contract plus the new month-overview backend route requirement |
 | [`docs/DEMO_VIDEO_SCRIPT.md`](docs/DEMO_VIDEO_SCRIPT.md) | 3-minute Loom storyboard |
 | [`examples/workflows/`](examples/workflows/) | Six end-to-end conversational walkthroughs (overdue invoices, monthly summary, batch categorisation, customer briefing, Bewirtung booking, mixed-rate supermarket receipt) |
 

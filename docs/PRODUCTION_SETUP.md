@@ -11,8 +11,16 @@ Pure tax-math helpers still run locally in both modes. See [Status](#status) bel
 ## Prerequisites
 
 1. The BuchhaltIQ backend running and reachable from the machine that runs the MCP server. For local development this means `uvicorn` on `localhost:8080` (the default `PORT` in the backend's `app/main.py`).
-2. The MCP server installed in editable mode (`pip install -e ".[dev]"`).
-3. Claude Desktop (or any MCP client) configured to launch this server.
+2. The backend must include the routes used by the tools you want to run. The
+   new `accounting_month_overview` tool requires
+   `GET /api/mcp/month-overview/{period_key}`; HR tools require the `/api/hr/...`
+   read endpoints.
+3. The MCP server installed in editable mode (`pip install -e ".[dev]"`).
+4. Claude Desktop (or any MCP client) configured to launch this server.
+
+Demo mode does not need any backend route. Production mode is intentionally
+thin: if a backend route is missing, the MCP tool returns the backend HTTP error
+instead of inventing data locally.
 
 The validate and resolve endpoints are currently **public** on the backend — no Authorization header required. The Authorization plumbing is already in place in `BuchhaltIQClient` for when read endpoints with Firebase-token auth land later.
 
@@ -111,10 +119,10 @@ Wired tools return the **same top-level keys** in production as in demo mode, pl
 | `get_customer` | ✅ **wired to `GET /api/user-invoices/customers`** | Same; aggregate fetched, filtered client-side by id. |
 | `search_belege` | ✅ **wired to `GET /api/user-invoices/transactions`** | Same; bank transactions projected as Belege. |
 | `monthly_report` | ✅ **wired to `GET /api/user-invoices/monthly-report`** | Same; aggregation runs on the backend. |
-| `accounting_month_overview` | ✅ **wired to `GET /api/mcp/month-overview/{period_key}`** | Uses BuchhaltIQ source semantics: daily reports, invoice payments, standalone income, P&L expenses. |
-| `list_employees` | ✅ **wired to `/api/hr/employees`** | HR read endpoint with minimized fields. |
-| `get_employee_work_summary` | ✅ **wired to HR month/employee endpoints** | Aggregation runs in MCP from backend HR reads. |
-| `hr_month_overview` | ✅ **wired to HR month endpoints** | Aggregation runs in MCP from backend HR reads. |
+| `accounting_month_overview` | ✅ MCP-side wired to `GET /api/mcp/month-overview/{period_key}` | Requires the matching backend route to be deployed; uses daily reports, invoice payments, standalone income, P&L expenses. |
+| `list_employees` | ✅ MCP-side wired to `/api/hr/employees` | Requires HR read endpoints in the backend; returns minimized fields by default. |
+| `get_employee_work_summary` | ✅ MCP-side wired to HR month/employee endpoints | Requires HR read endpoints; aggregation runs in MCP from backend HR reads. |
+| `hr_month_overview` | ✅ MCP-side wired to HR month endpoints | Requires HR read endpoints; aggregation runs in MCP from backend HR reads. |
 
 ## Troubleshooting
 
@@ -122,5 +130,6 @@ Wired tools return the **same top-level keys** in production as in demo mode, pl
 |---|---|---|
 | `BuchhaltIQAPIError: 503 from .../validate/...: DATEV ref unavailable` | Backend cannot find its `data/datev_kontenrahmen` reference files. | Verify the backend's data directory and paths. |
 | `ToolError: Error executing tool ...: Connection refused` | Backend is not running on the configured base URL. | Start `uvicorn` or fix `BUCHHALTIQ_API_BASE_URL`. |
+| `BuchhaltIQAPIError: 404 from .../api/mcp/month-overview/...` | The MCP version is newer than the deployed backend. | Deploy the backend route `GET /api/mcp/month-overview/{period_key}` or use demo mode. |
 | `BuchhaltIQAPIError: 400 from .../resolve: Unknown category_id` | Category exists in MCP `data/categories.json` but not in the backend's `category_definitions.json`. | Either add the category to the backend, or use a category the backend already knows. |
 | The two wired endpoints reject your token | The endpoints are public today; sending an Authorization header is harmless but unnecessary. | If you accidentally set a malformed token via `BUCHHALTIQ_API_KEY` and a private endpoint later rejects it, unset the variable. |

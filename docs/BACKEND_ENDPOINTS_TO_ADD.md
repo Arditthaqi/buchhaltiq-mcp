@@ -2,7 +2,25 @@
 
 This is the legacy copy-paste-ready FastAPI specification for the original four read endpoints the MCP server expected in `app/modules/user_invoices/routes.py`: `list_invoices`, `get_customer`, `search_belege`, and `monthly_report`.
 
-The newer product-aware month feature uses a dedicated backend route instead: `GET /api/mcp/month-overview/{period_key}`, implemented in `app/modules/mcp/routes.py` with the accounting calculator in `app/modules/mcp/month_overview_service.py`.
+The newer product-aware month feature uses a dedicated backend route instead:
+`GET /api/mcp/month-overview/{period_key}`, implemented in
+`app/modules/mcp/routes.py` with the accounting calculator in
+`app/modules/mcp/month_overview_service.py`.
+
+Demo mode works without these backend routes. Production mode requires the
+matching backend implementation to be deployed; the MCP server deliberately does
+not fake production data if a route is missing.
+
+## Current backend requirements
+
+| MCP tool | Backend requirement |
+|---|---|
+| `list_invoices` | `GET /api/user-invoices/list` |
+| `get_customer` | `GET /api/user-invoices/customers` |
+| `search_belege` | `GET /api/user-invoices/transactions` |
+| `monthly_report` | `GET /api/user-invoices/monthly-report` |
+| `accounting_month_overview` | `GET /api/mcp/month-overview/{period_key}` |
+| `list_employees`, `get_employee_work_summary`, `hr_month_overview` | `/api/hr/...` employee, time-entry, absence, and month-status endpoints |
 
 > **Rationale for putting this in the MCP repo, not the backend repo:** the cross-repo edit is intentionally scoped out — the MCP repo owns its expectations of the backend, and the backend repo owns the implementation. This file is the contract.
 
