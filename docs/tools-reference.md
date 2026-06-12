@@ -4,7 +4,7 @@ Authoritative reference for every tool the MCP server exposes. For conversationa
 
 All tools share two cross-cutting behaviors:
 
-- **Modes.** Each tool ships with a complete demo-mode implementation and a production-mode stub that raises `ProductionNotImplementedError`. The demo path reads from the fixtures under [`../data/`](../data/); the production path will read from `api.buchhaltiq.de` once Phase 2 wiring lands.
+- **Modes.** Each tool has a deterministic demo-mode implementation. Tools whose BuchhaltIQ backend endpoint exists delegate to production in `BUCHHALTIQ_MCP_MODE=production`; pure helper tools still raise `ProductionNotImplementedError` until a live backend binding is added.
 - **Money.** Every monetary value is a `Decimal` internally and a decimal-string in the JSON response (e.g. `"1475.60"`, never `1475.6` as a JSON number). This preserves precision through the LLM round-trip.
 
 ---
@@ -201,6 +201,76 @@ monthly_report(year=2026, month=3)
 
 ---
 
+## `accounting_month_overview`
+
+BuchhaltIQ-aware accounting month overview. This is the richer successor to
+`monthly_report` for product-aware questions: POS revenue comes from
+`dailyReports.totalRevenue`, invoice revenue comes from actual payments by
+`paidAt` and excludes `origin=pos`, standalone income is limited to exportable
+P&L income categories, and expenses are grouped by P&L expense category.
+
+### Parameters
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `period_key` | `string` | required | Month in `YYYY-MM` format, e.g. `2026-04`. |
+
+### Returns
+
+```json
+{
+  "period_key": "2026-04",
+  "currency": "EUR",
+  "income": {
+    "total": "1288.00",
+    "pos_revenue": "1000.00",
+    "invoice_revenue": "188.00",
+    "standalone_income": "100.00",
+    "daily_report_count": 1,
+    "invoice_payment_count": 2
+  },
+  "expenses": {
+    "gross_expenses": "119.00",
+    "refunds": "19.00",
+    "net_expenses": "100.00",
+    "by_category": [
+      {
+        "category_id": "wareneinkauf_material",
+        "gross": "119.00",
+        "refunds": "19.00",
+        "net": "100.00"
+      }
+    ]
+  },
+  "profit": "1188.00",
+  "readiness": {
+    "missing_receipt_count": 1,
+    "uncategorized_transaction_count": 0,
+    "can_prepare_datev": false
+  }
+}
+```
+
+The response also includes `vat`, `source_counts`, `warnings`, and
+`methodology` so Claude can explain where each number came from instead of
+collapsing everything into a single total.
+
+### Errors
+
+- `ValueError` — `period_key` is not in `YYYY-MM` format.
+
+### Natural-language example
+
+> "Wie war mein April 2026 buchhalterisch?"
+
+becomes
+
+```python
+accounting_month_overview(period_key="2026-04")
+```
+
+---
+
 ## `categorize_transaction`
 
 Map a transaction (vendor + description) to a German accounting category. Rule-based with an explicit rationale for every match — no black-box ML.
@@ -254,6 +324,104 @@ categorize_transaction(
 ```
 
 ---
+
+## `list_employees`
+
+List BuchhaltIQ employees with optional status and employment-type filters.
+
+### Parameters
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `status` | `"active" \| "inactive" \| null` | `null` | Restrict by employee lifecycle status. |
+| `employment_type` | `"minijob" \| "parttime" \| "fulltime" \| null` | `null` | Restrict by employment type. |
+| `limit` | `integer` | `100` | Maximum rows. Clamped to `[1, 200]`. |
+| `include_sensitive` | `boolean` | `false` | Include contact / DATEV-lock metadata only when explicitly requested. |
+
+### Returns
+
+```json
+[
+  {
+    "id": "emp_001",
+    "display_name": "Anna Mueller",
+    "status": "active",
+    "employment_type": "minijob",
+    "hourly_rate": 15.0,
+    "weekly_hours": 12.0,
+    "datev_personnel_number": 101
+  }
+]
+```
+
+---
+
+## `get_employee_work_summary`
+
+Summarize one employee's work for a month. The tool explicitly separates
+`shift_count` from `work_day_count`, so split shifts on the same day are
+counted correctly.
+
+### Parameters
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `employee_id` | `string` | required | Employee document ID. |
+| `period_key` | `string` | required | Month in `YYYY-MM` format. |
+| `include_entries` | `boolean` | `false` | Include individual time-entry and absence rows. |
+
+### Returns
+
+```json
+{
+  "period_key": "2026-04",
+  "employee": {"id": "emp_001", "display_name": "Anna Mueller"},
+  "shift_count": 4,
+  "work_day_count": 3,
+  "gross_hours": 21.5,
+  "break_hours": 1.25,
+  "net_hours": 20.25,
+  "calculated_wage": "303.75",
+  "absence_days": 0.5,
+  "absence_types": {"vacation": 0.5}
+}
+```
+
+---
+
+## `hr_month_overview`
+
+Build the HR month overview Claude should use for questions like "Wie oft haben
+meine Mitarbeiter im April gearbeitet?" or "Ist der Lohnmonat bereit?".
+
+### Parameters
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `period_key` | `string` | required | Month in `YYYY-MM` format. |
+| `include_entries` | `boolean` | `false` | Include raw entries/absences inside each employee summary. |
+
+### Returns
+
+```json
+{
+  "period_key": "2026-04",
+  "status": "open",
+  "can_edit": true,
+  "active_employee_count": 2,
+  "shift_count": 7,
+  "work_day_count": 6,
+  "total_net_hours": 40.25,
+  "estimated_wage_total": "653.75",
+  "absence_days": 2.5,
+  "employee_summaries": []
+}
+```
+
+### Errors
+
+- `ValueError` — malformed `period_key` or invalid employee filter.
+- `NotFoundError` — unknown employee in demo mode.
 
 ---
 
@@ -497,6 +665,10 @@ The full Kontierung wrapper — given a BuchhaltIQ category, returns a complete 
 | `get_customer` | customers fixture | one customer | non-empty ID; raises `NotFoundError` on miss |
 | `search_belege` | belege fixture | list of belege | non-empty query; limit clamped to `[1, 100]` |
 | `monthly_report` | invoices + belege | aggregated totals | `year ∈ [2000, 2100]`, `month ∈ [1, 12]` |
+| `accounting_month_overview` | month_overviews fixture / `/api/mcp/month-overview/{period_key}` | BuchhaltIQ-aware month aggregate | `period_key` format |
+| `list_employees` | hr_employees fixture / `/api/hr/employees` | employees, field-minimized | status/type validation; limit clamped to `[1, 200]` |
+| `get_employee_work_summary` | HR employees + time entries + absences | one employee's monthly HR aggregate | `period_key` format; non-empty employee ID |
+| `hr_month_overview` | HR employees + time entries + absences + month status | HR month aggregate | `period_key` format |
 | `categorize_transaction` | rule table (in code) | category + rationale + echo | at least one of vendor/description; `amount_gross` parseable |
 | `extract_vat_from_receipt` | _money.py logic only | net + tax + gross + rate | rate ∈ {0, 7, 19}; non-negative gross |
 | `map_tax_rate_to_bu_key` | BU-key table (in code) | BU-key + description + side | rate ∈ {0, 7, 19} |
@@ -505,4 +677,4 @@ The full Kontierung wrapper — given a BuchhaltIQ category, returns a complete 
 | `split_mixed_tax_receipt` | _money.py logic only | per-rate breakdown + warnings | non-empty positions; per-position rate validation |
 | `resolve_account_assignment` | categories + datev_accounts fixtures | full DATEV booking pair | unknown category → `NotFoundError`; tax-free override |
 
-Each tool has a corresponding test file under [`../tests/`](../tests/) covering happy path, validation errors, and the production stub. Adding a twelfth tool follows the seven-step pattern documented in [`architecture.md`](architecture.md#adding-a-new-tool--the-seven-step-pattern).
+Each tool has a corresponding test file under [`../tests/`](../tests/) covering happy path, validation errors, and production behavior where wired. Adding another tool follows the seven-step pattern documented in [`architecture.md`](architecture.md#adding-a-new-tool--the-seven-step-pattern).

@@ -18,7 +18,7 @@ flowchart TB
         P1[Demo-mode safe<br/>Production needs AVV] -.->|migration| P2[AVV signed +<br/>opt-in + DSFA +<br/>field minimization]
     end
     subgraph tools["4 — Tool Surface"]
-        S1[11 tools:<br/>read, math, Kontierung] -.->|migration| S2[+ OCR + UStVA<br/>+ §13b + GoBD checks]
+        S1[15 tools:<br/>read, month overview, HR, math, Kontierung] -.->|migration| S2[+ OCR + UStVA<br/>+ §13b + GoBD checks]
     end
     subgraph ops["5 — Operability"]
         O1[stdio, no metrics,<br/>no rate limit] -.->|migration| O2[Logs + metrics +<br/>rate limit + versioning]
@@ -94,9 +94,9 @@ flowchart TB
 
 ## Layer 4 — Tool Surface
 
-| Today (11 tools) | Target additions |
+| Today (15 tools) | Target additions |
 |---|---|
-| `list_invoices`, `get_customer`, `search_belege`, `monthly_report`, `categorize_transaction`, `extract_vat_from_receipt`, `map_tax_rate_to_bu_key`, `validate_datev_account`, `apply_bewirtung_rule`, `split_mixed_tax_receipt`, `resolve_account_assignment` | `analyze_receipt_positions` (receipt-photo parsing — vision-model TBD) |
+| `list_invoices`, `get_customer`, `search_belege`, `monthly_report`, `accounting_month_overview`, `list_employees`, `get_employee_work_summary`, `hr_month_overview`, `categorize_transaction`, `extract_vat_from_receipt`, `map_tax_rate_to_bu_key`, `validate_datev_account`, `apply_bewirtung_rule`, `split_mixed_tax_receipt`, `resolve_account_assignment` | `analyze_receipt_positions` (receipt-photo parsing — vision-model TBD) |
 | | `extract_creditor_data` (vendor master from receipt photo) |
 | | `generate_ustva` (monthly Umsatzsteuer-Voranmeldung) |
 | | `detect_reverse_charge` (auto-flag §13b for EU services) |
@@ -182,7 +182,7 @@ For each new tool: same seven-step pattern from [`architecture.md`](architecture
 
 | Capability | Today | Phase A | Phase C | Phase E |
 |---|:---:|:---:|:---:|:---:|
-| 11 tools production-wired | ✅ | ✅ | ✅ | ✅ |
+| 15-tool surface | ✅ | ✅ | ✅ | ✅ |
 | Decimal precision, audit trails | ✅ | ✅ | ✅ | ✅ |
 | Demo-mode reproducible | ✅ | ✅ | ✅ | ✅ |
 | GDPR-safe public repo | ✅ | ✅ | ✅ | ✅ |

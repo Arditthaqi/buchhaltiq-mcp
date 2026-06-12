@@ -1,0 +1,85 @@
+[
+  {
+    "id": "time_001",
+    "employeeId": "emp_001",
+    "date": "2026-04-01",
+    "startTime": 600,
+    "endTime": 900,
+    "minutesWorked": 270,
+    "breakMinutes": 30,
+    "periodKey": "2026-04",
+    "source": "owner",
+    "notes": "Mittagsschicht"
+  },
+  {
+    "id": "time_002",
+    "employeeId": "emp_001",
+    "date": "2026-04-01",
+    "startTime": 1080,
+    "endTime": 1350,
+    "minutesWorked": 270,
+    "breakMinutes": 0,
+    "periodKey": "2026-04",
+    "source": "owner",
+    "notes": "Abendschicht"
+  },
+  {
+    "id": "time_003",
+    "employeeId": "emp_001",
+    "date": "2026-04-03",
+    "minutesWorked": 480,
+    "breakMinutes": 30,
+    "periodKey": "2026-04",
+    "source": "owner"
+  },
+  {
+    "id": "time_004",
+    "employeeId": "emp_001",
+    "date": "2026-04-08",
+    "startTime": 1320,
+    "endTime": 120,
+    "minutesWorked": 225,
+    "breakMinutes": 15,
+    "periodKey": "2026-04",
+    "source": "owner",
+    "notes": "Spaetschicht bis nach Mitternacht"
+  },
+  {
+    "id": "time_005",
+    "employeeId": "emp_002",
+    "date": "2026-04-02",
+    "minutesWorked": 480,
+    "breakMinutes": 30,
+    "periodKey": "2026-04",
+    "source": "owner"
+  },
+  {
+    "id": "time_006",
+    "employeeId": "emp_002",
+    "date": "2026-04-09",
+    "minutesWorked": 480,
+    "breakMinutes": 30,
+    "periodKey": "2026-04",
+    "source": "owner"
+  },
+  {
+    "id": "time_007",
+    "employeeId": "emp_002",
+    "date": "2026-04-16",
+    "startTime": 720,
+    "endTime": 1020,
+    "minutesWorked": 300,
+    "breakMinutes": 0,
+    "periodKey": "2026-04",
+    "source": "owner"
+  },
+  {
+    "id": "time_008",
+    "employeeId": "emp_003",
+    "date": "2026-03-20",
+    "minutesWorked": 480,
+    "breakMinutes": 30,
+    "periodKey": "2026-03",
+    "source": "owner"
+  }
+]

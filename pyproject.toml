@@ -1,6 +1,6 @@
 [project]
 name = "buchhaltiq-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Model Context Protocol server for the BuchhaltIQ accounting product. Demonstrates the SaaS-makes-its-own-product-MCP-ready pattern with both fixture-based demo mode and production mode."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

@@ -18,9 +18,9 @@ from buchhaltiq_mcp.config import Config
 from buchhaltiq_mcp.tools import reports as reports_tool
 
 
-async def _call_monthly_report(server: FastMCP, **kwargs: object) -> dict:
-    """Invoke the registered monthly_report tool and unwrap the payload."""
-    result = await server.call_tool("monthly_report", kwargs)
+async def _call_report_tool(server: FastMCP, name: str, **kwargs: object) -> dict:
+    """Invoke a registered reports tool and unwrap the payload."""
+    result = await server.call_tool(name, kwargs)
     if isinstance(result, tuple) and len(result) >= 2:
         content, structured = result[0], result[1]
     else:
@@ -33,6 +33,10 @@ async def _call_monthly_report(server: FastMCP, **kwargs: object) -> dict:
 
     text_block = next(block for block in content if getattr(block, "type", None) == "text")
     return json.loads(text_block.text)
+
+
+async def _call_monthly_report(server: FastMCP, **kwargs: object) -> dict:
+    return await _call_report_tool(server, "monthly_report", **kwargs)
 
 
 @pytest.fixture
@@ -110,6 +114,47 @@ async def test_monthly_report_invalid_year_raises(server_demo: FastMCP) -> None:
         await _call_monthly_report(server_demo, year=1999, month=6)
 
 
+async def test_accounting_month_overview_april_2026_uses_authoritative_sources(
+    server_demo: FastMCP,
+) -> None:
+    overview = await _call_report_tool(
+        server_demo,
+        "accounting_month_overview",
+        period_key="2026-04",
+    )
+
+    assert overview["period_key"] == "2026-04"
+    assert overview["income"]["pos_revenue"] == "1000.00"
+    assert overview["income"]["invoice_revenue"] == "188.00"
+    assert overview["income"]["standalone_income"] == "100.00"
+    assert overview["income"]["total"] == "1288.00"
+    assert overview["income"]["excluded_linked_income_count"] == 1
+    assert overview["income"]["excluded_operational_bank_income_count"] == 1
+    assert overview["expenses"]["net_expenses"] == "100.00"
+    assert overview["profit"] == "1188.00"
+    assert overview["readiness"]["can_prepare_datev"] is False
+
+
+async def test_accounting_month_overview_empty_demo_month_returns_zero(
+    server_demo: FastMCP,
+) -> None:
+    overview = await _call_report_tool(
+        server_demo,
+        "accounting_month_overview",
+        period_key="2026-05",
+    )
+
+    assert overview["income"]["total"] == "0.00"
+    assert overview["expenses"]["net_expenses"] == "0.00"
+    assert overview["profit"] == "0.00"
+    assert overview["warnings"] == ["No demo accounting data exists for this period."]
+
+
+async def test_accounting_month_overview_invalid_period_raises(server_demo: FastMCP) -> None:
+    with pytest.raises(ToolError, match="YYYY-MM"):
+        await _call_report_tool(server_demo, "accounting_month_overview", period_key="2026/04")
+
+
 @respx.mock
 async def test_monthly_report_production_passes_through_backend(
     server_prod: FastMCP, production_config: Config
@@ -137,3 +182,31 @@ async def test_monthly_report_production_passes_through_backend(
     assert report["profit"] == "4199.50"
     assert report["invoice_count"] == 4
     assert report["beleg_count"] == 12
+
+
+@respx.mock
+async def test_accounting_month_overview_production_passes_through_backend(
+    server_prod: FastMCP, production_config: Config
+) -> None:
+    backend_url = f"{production_config.api_base_url}/api/mcp/month-overview/2026-04"
+    respx.get(backend_url).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "period_key": "2026-04",
+                "currency": "EUR",
+                "income": {"total": "1288.00", "pos_revenue": "1000.00"},
+                "expenses": {"net_expenses": "100.00"},
+                "profit": "1188.00",
+            },
+        )
+    )
+
+    overview = await _call_report_tool(
+        server_prod,
+        "accounting_month_overview",
+        period_key="2026-04",
+    )
+    assert overview["income"]["pos_revenue"] == "1000.00"
+    assert overview["income"]["total"] == "1288.00"
+    assert overview["profit"] == "1188.00"

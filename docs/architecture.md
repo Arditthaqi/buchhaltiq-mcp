@@ -72,7 +72,7 @@ Pydantic v2 `BaseModel`s with `extra="forbid"` so unexpected fields are caught a
 
 ### `fixtures.py` — the demo data path
 
-`load_customers()`, `load_invoices()`, `load_belege()` each return a list of validated model instances, cached with `lru_cache` so repeated calls within a process don't re-read or re-validate the JSON. The loader looks first in the repo's `data/` directory (for source checkouts) and then inside the installed wheel (for `pip install`-style usage).
+`load_customers()`, `load_invoices()`, `load_belege()`, and raw-dict loaders such as `load_month_overviews()` return demo fixtures cached with `lru_cache` so repeated calls within a process don't re-read or re-validate the JSON. The loader looks first in the repo's `data/` directory (for source checkouts) and then inside the installed wheel (for `pip install`-style usage).
 
 ### `tools/*.py` — the per-domain tool modules
 

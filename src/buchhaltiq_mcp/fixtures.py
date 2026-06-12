@@ -67,3 +67,33 @@ def load_datev_accounts() -> list[DatevAccount]:
 def load_categories() -> list[AccountingCategory]:
     """Return the BuchhaltIQ accounting-category-to-SKR mapping table."""
     return [AccountingCategory.model_validate(row) for row in _load_raw("categories")]
+
+
+@lru_cache(maxsize=1)
+def load_hr_employees() -> list[dict[str, Any]]:
+    """Return demo HR employee master data."""
+    return _load_raw("hr_employees")
+
+
+@lru_cache(maxsize=1)
+def load_hr_time_entries() -> list[dict[str, Any]]:
+    """Return demo HR time entries."""
+    return _load_raw("hr_time_entries")
+
+
+@lru_cache(maxsize=1)
+def load_hr_absences() -> list[dict[str, Any]]:
+    """Return demo HR absence records."""
+    return _load_raw("hr_absences")
+
+
+@lru_cache(maxsize=1)
+def load_hr_month_statuses() -> list[dict[str, Any]]:
+    """Return demo HR month status records."""
+    return _load_raw("hr_month_statuses")
+
+
+@lru_cache(maxsize=1)
+def load_month_overviews() -> list[dict[str, Any]]:
+    """Return demo accounting month overviews."""
+    return _load_raw("month_overviews")
