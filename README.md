@@ -33,7 +33,7 @@ Demo mode keeps the public repository GDPR-safe — no real customer data flows 
 | 📑 | `list_invoices` | List invoices with status / customer / date-range filters, newest first |
 | 👤 | `get_customer` | Fetch a single customer by ID |
 | 🔍 | `search_belege` | Substring search over receipts (vendor + description), case-insensitive |
-| 📊 | `monthly_report` | BWA-style P&L summary; production mode filters by `posting_class` so internal transfers / tax pre-payments / capital movements don't pollute the expense total |
+| 📊 | `monthly_report` | BWA-style P&L summary; in production mode the same calculation as `accounting_month_overview` (Tagesberichte, invoice payments, EÜR tax payments by cash flow) |
 | 📈 | `accounting_month_overview` | BuchhaltIQ-aware month overview: Tagesberichte, invoice payments, standalone income, P&L expenses, VAT estimate, DATEV readiness |
 | 👥 | `list_employees` | List employees with status / employment-type filters and field-minimized HR data |
 | ⏱️ | `get_employee_work_summary` | One employee's monthly shift count, true work-day count, net hours, absences, and estimated wage |

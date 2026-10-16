@@ -145,7 +145,10 @@ search_belege(query="Diesel")
 
 ## `monthly_report`
 
-BWA-style monthly profit-and-loss summary. Revenue is the sum of gross totals of invoices issued in the month with status `paid`, `open`, or `overdue` — drafts and cancellations are excluded. Expenses are the sum of gross amounts of receipts dated in the month. Profit is revenue minus expenses, all in two-decimal precision.
+BWA-style monthly profit-and-loss summary, all in two-decimal precision.
+
+- **Production mode:** the backend computes the numbers with the BuchhaltIQ accounting month overview — the same calculation as `accounting_month_overview`, the month report and the app (one result, by cash flow). Revenue is POS revenue from daily reports plus invoice payments of the month (credit-note payments subtracted, `origin=pos` excluded) plus standalone P&L income. Expenses are P&L expenses incl. wages; Umsatzsteuer (also prior years) and Gewerbesteuer count by cash flow, a refund reduces expenses; Einkommensteuer is private and never counts. Profit is revenue minus expenses.
+- **Demo mode:** revenue is the sum of gross totals of fixture invoices issued in the month with status `paid`, `open`, or `overdue`; expenses are the gross amounts of fixture receipts dated in the month.
 
 ### Parameters
 
@@ -169,25 +172,42 @@ BWA-style monthly profit-and-loss summary. Revenue is the sum of gross totals of
 }
 ```
 
-In **production mode** the response additionally carries an audit
-trail of the expense filter (the backend uses `posting_class` to
-exclude internal transfers, tax pre-payments, capital movements,
-and other non-P&L flows from the BWA total):
+In **production mode** the response additionally carries where the
+numbers come from and an audit trail of the filters:
 
 ```json
 {
-  "expense_excluded_total": "27255.46",
-  "expense_excluded_count": 13,
-  "expense_filter": "Only negative bank transactions with posting_class=pnl are counted."
+  "period_key": "2026-03",
+  "pos_revenue": "3800.00",
+  "standalone_income": "0.00",
+  "invoice_gross_total": "519.70",
+  "credit_note_gross_total": "0.00",
+  "tax_payments_total": "150.00",
+  "tax_payment_count": 1,
+  "expense_excluded_total": "1200.00",
+  "expense_excluded_count": 3,
+  "inflow_on_expense_total": "0.00",
+  "inflow_on_expense_count": 0,
+  "result_rule": "euer-steuerzahlungen/2026-10-16",
+  "revenue_filter": "...",
+  "expense_filter": "...",
+  "warnings": []
 }
 ```
 
-These fields are absent in demo mode because the demo fixtures do
-not carry `posting_class` metadata.
+`invoice_count` and `credit_note_count` count payments of the month,
+not invoice documents; `revenue_excluded_*` are always `0`. A closed
+month can show a different result in the stored month report (old
+rule); `result_rule` names the rule the numbers were computed with.
+These fields are absent in demo mode.
 
 ### Errors
 
 - `ValueError` — `year` outside `[2000, 2100]` or `month` outside `[1, 12]`.
+- Production mode: the backend answers `409` when the month's source data
+  cannot be reconciled (e.g. receipt positions that cannot explain the bank
+  amount, unverified cashbook corrections or PosIQ cash movements) and `503`
+  when Firestore is unavailable — the same as `accounting_month_overview`.
 
 ### Natural-language example
 
@@ -208,6 +228,9 @@ BuchhaltIQ-aware accounting month overview. This is the richer successor to
 `dailyReports.totalRevenue`, invoice revenue comes from actual payments by
 `paidAt` and excludes `origin=pos`, standalone income is limited to exportable
 P&L income categories, and expenses are grouped by P&L expense category.
+Umsatzsteuer (also prior years) and Gewerbesteuer count by cash flow — a
+payment is an expense, a refund reduces expenses — and are listed separately
+in `expenses.tax_payments`; Einkommensteuer is private and never counts.
 
 ### Parameters
 
@@ -664,7 +687,7 @@ The full Kontierung wrapper — given a BuchhaltIQ category, returns a complete 
 | `list_invoices` | invoices fixture | list of invoices, newest first | none beyond schema; limit clamped to `[1, 200]` |
 | `get_customer` | customers fixture | one customer | non-empty ID; raises `NotFoundError` on miss |
 | `search_belege` | belege fixture | list of belege | non-empty query; limit clamped to `[1, 100]` |
-| `monthly_report` | invoices + belege | aggregated totals | `year ∈ [2000, 2100]`, `month ∈ [1, 12]` |
+| `monthly_report` | invoices + belege fixture / `/api/user-invoices/monthly-report` (month overview) | aggregated totals | `year ∈ [2000, 2100]`, `month ∈ [1, 12]` |
 | `accounting_month_overview` | month_overviews fixture / `/api/mcp/month-overview/{period_key}` | BuchhaltIQ-aware month aggregate | `period_key` format |
 | `list_employees` | hr_employees fixture / `/api/hr/employees` | employees, field-minimized | status/type validation; limit clamped to `[1, 200]` |
 | `get_employee_work_summary` | HR employees + time entries + absences | one employee's monthly HR aggregate | `period_key` format; non-empty employee ID |

@@ -140,13 +140,22 @@ def register(server: FastMCP, config: Config) -> None:
     async def monthly_report(year: int, month: int) -> dict[str, Any]:
         """Build a BWA-style monthly profit-and-loss summary.
 
-        Revenue is the sum of gross totals of invoices issued in the month
-        with status ``paid``, ``open``, or ``overdue``. Drafts and cancelled
-        invoices are excluded — drafts because they are not yet billed,
-        cancellations because they never become revenue.
+        Production mode: the backend computes the numbers with the same
+        BuchhaltIQ accounting month overview as ``accounting_month_overview``,
+        the month report and the app (one result, by cash flow). Revenue is
+        POS revenue from daily reports plus invoice payments of the month
+        (credit-note payments subtracted, ``origin=pos`` excluded) plus
+        standalone P&L income. Expenses are P&L expenses incl. wages;
+        Umsatzsteuer (also prior years) and Gewerbesteuer count by cash flow,
+        a refund reduces expenses; Einkommensteuer is private and never
+        counts. Profit equals revenue minus expenses. The response also
+        carries ``period_key``, ``pos_revenue``, ``standalone_income``,
+        ``tax_payments_total``, ``tax_payment_count``, ``result_rule`` and
+        ``warnings``.
 
-        Expenses are the sum of gross amounts of receipts (``Belege``)
-        dated in the month. Profit equals revenue minus expenses.
+        Demo mode: revenue is the sum of gross totals of fixture invoices
+        issued in the month with status ``paid``, ``open`` or ``overdue``;
+        expenses are the gross amounts of fixture receipts dated in the month.
 
         Args:
             year: Four-digit calendar year (2000-2100).
@@ -183,8 +192,13 @@ def register(server: FastMCP, config: Config) -> None:
         POS revenue comes from ``dailyReports.totalRevenue``; invoice revenue
         comes from actual payments by ``paidAt`` and excludes ``origin=pos``;
         standalone income is limited to exportable P&L income categories; and
-        expenses are grouped by P&L expense category while neutral, tax,
-        private, clearing, and balance-sheet movements are excluded.
+        expenses are grouped by P&L expense category while neutral, private,
+        clearing, and balance-sheet movements are excluded. Tax payments
+        count by cash flow: Umsatzsteuer (also prior years) and Gewerbesteuer
+        payments are expenses, their refunds reduce expenses (listed in
+        ``expenses.tax_payments``); Einkommensteuer is private and never
+        counts; Koerperschaftsteuer is excluded. ``result_rule`` names the
+        rule version.
 
         Args:
             period_key: Month in ``YYYY-MM`` format.
